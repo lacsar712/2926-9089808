@@ -17,6 +17,7 @@ const apiKeyRoutes = require('./routes/apiKey');
 const openRoutes = require('./routes/open');
 const approvalRoutes = require('./routes/approval');
 const environmentRoutes = require('./routes/environment');
+const presetRoutes = require('./routes/preset');
 
 const { authMiddleware } = require('./middleware/auth');
 const { environmentMiddleware } = require('./middleware/environment');
@@ -55,6 +56,7 @@ app.use('/api/lineage', authMiddleware, lineageRoutes);
 app.use('/api/api-keys', authMiddleware, apiKeyRoutes);
 app.use('/api/approval', authMiddleware, approvalRoutes);
 app.use('/api/environments', authMiddleware, environmentRoutes);
+app.use('/api/presets', authMiddleware, presetRoutes);
 
 // 全局错误处理
 app.use((err, _req, res, _next) => {

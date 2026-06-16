@@ -91,6 +91,12 @@ const routes = [
                 meta: { title: 'API 密钥', icon: 'Key' }
             },
             {
+                path: 'presets',
+                name: 'Presets',
+                component: () => import('@/views/preset/PresetView.vue'),
+                meta: { title: '参数预设库', icon: 'SetUp' }
+            },
+            {
                 path: 'approval',
                 name: 'Approval',
                 component: () => import('@/views/approval/ApprovalView.vue'),

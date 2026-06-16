@@ -86,6 +86,41 @@
           <el-button text circle @click="selectedNode = null"><el-icon><Close /></el-icon></el-button>
         </div>
         <el-divider />
+
+        <div class="preset-actions">
+          <el-select
+            v-model="selectedPresetId"
+            placeholder="加载预设..."
+            size="small"
+            style="width: 100%"
+            filterable
+            @change="handlePresetSelect"
+          >
+            <el-option
+              v-for="p in componentPresets"
+              :key="p.id"
+              :value="p.id"
+              :label="p.name"
+            >
+              <div class="preset-option">
+                <span>{{ p.name }}</span>
+                <el-tag v-if="p.is_public" type="success" size="small" effect="light">公开</el-tag>
+                <span class="preset-usage">{{ p.usage_count }} 次</span>
+              </div>
+            </el-option>
+          </el-select>
+          <el-button
+            size="small"
+            type="primary"
+            plain
+            style="width: 100%; margin-top: 8px"
+            @click="openSavePresetDialog"
+          >
+            <el-icon><Collection /></el-icon>另存为预设
+          </el-button>
+        </div>
+        <el-divider>参数配置</el-divider>
+
         <el-form label-position="top" size="small">
           <el-form-item label="组件名称">
             <el-input v-model="selectedNode.data.label" @change="syncNodeData" />
@@ -95,7 +130,6 @@
               {{ getCatLabel(selectedNode.data.category) }} / {{ selectedNode.data.component }}
             </el-tag>
           </el-form-item>
-          <el-divider>参数配置</el-divider>
           <template v-if="selectedNode.data.config">
             <el-form-item v-for="(value, key) in selectedNode.data.config" :key="key" :label="configLabels[key] || key">
               <el-switch v-if="typeof value === 'boolean'" v-model="selectedNode.data.config[key]" @change="syncNodeData" />
@@ -121,6 +155,118 @@
       </div>
     </aside>
 
+    <!-- Diff 预览弹窗 -->
+    <el-dialog
+      v-model="diffDialogVisible"
+      title="预设加载预览"
+      width="600px"
+      destroy-on-close
+    >
+      <div v-if="diffData" class="diff-preview">
+        <div class="diff-info">
+          <p>将应用预设「<strong>{{ diffData.presetName }}</strong>」到当前组件</p>
+          <p class="diff-hint">以下字段将被覆盖：</p>
+        </div>
+        <div class="diff-list">
+          <div
+            v-for="(item, key) in diffData.changes"
+            :key="key"
+            class="diff-item"
+          >
+            <div class="diff-key">{{ configLabels[key] || key }}</div>
+            <div class="diff-values">
+              <div class="diff-old">
+                <span class="diff-label">当前</span>
+                <span class="diff-value">{{ formatDiffValue(item.oldValue) }}</span>
+              </div>
+              <el-icon class="diff-arrow"><ArrowRight /></el-icon>
+              <div class="diff-new">
+                <span class="diff-label">预设</span>
+                <span class="diff-value">{{ formatDiffValue(item.newValue) }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="diffData.changes && Object.keys(diffData.changes).length === 0" class="diff-no-change">
+            <el-icon><CircleCheck /></el-icon>
+            <span>当前配置与预设一致，无需更新</span>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="diffDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :disabled="diffData && Object.keys(diffData.changes).length === 0"
+          @click="confirmLoadPreset"
+        >
+          确认应用
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 另存为预设弹窗 -->
+    <el-dialog
+      v-model="savePresetDialogVisible"
+      title="另存为预设"
+      width="500px"
+      destroy-on-close
+      @close="resetSavePresetForm"
+    >
+      <el-form
+        ref="savePresetFormRef"
+        :model="savePresetForm"
+        :rules="savePresetRules"
+        label-width="90px"
+        label-position="left"
+      >
+        <el-form-item label="预设名称" prop="name">
+          <el-input
+            v-model="savePresetForm.name"
+            placeholder="请输入预设名称"
+            maxlength="100"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input
+            v-model="savePresetForm.description"
+            type="textarea"
+            :rows="2"
+            placeholder="请输入描述信息"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="标签">
+          <el-select
+            v-model="savePresetForm.tags"
+            multiple
+            filterable
+            allow-create
+            default-first-option
+            placeholder="输入标签后按回车添加"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="是否公开">
+          <el-switch
+            v-model="savePresetForm.is_public"
+            active-text="公开"
+            inactive-text="私有"
+          />
+          <div class="tip-text">
+            公开预设所有用户可见，私有预设仅您自己可见
+          </div>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="savePresetDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="savingPreset" @click="handleSavePreset">
+          保存预设
+        </el-button>
+      </template>
+    </el-dialog>
+
     <!-- 历史记录抽屉 -->
     <el-drawer v-model="showHistory" title="发布历史" size="400px">
       <div v-loading="historyLoading">
@@ -143,7 +289,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, markRaw } from 'vue'
+import { ref, reactive, computed, onMounted, markRaw, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { VueFlow, useVueFlow, Position, ConnectionMode, Handle } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -175,6 +321,27 @@ const userInfo = computed(() => {
   try { return JSON.parse(localStorage.getItem('userInfo') || '{}') } catch { return {} }
 })
 const userRole = computed(() => userInfo.value?.role || 'viewer')
+
+const selectedPresetId = ref(null)
+const componentPresets = ref([])
+const loadingPresets = ref(false)
+const diffDialogVisible = ref(false)
+const diffData = ref(null)
+const pendingPreset = ref(null)
+const savePresetDialogVisible = ref(false)
+const savingPreset = ref(false)
+const savePresetFormRef = ref(null)
+
+const savePresetForm = reactive({
+  name: '',
+  description: '',
+  tags: [],
+  is_public: false
+})
+
+const savePresetRules = {
+  name: [{ required: true, message: '请输入预设名称', trigger: 'blur' }]
+}
 
 let nodeCounter = 100
 
@@ -400,6 +567,119 @@ const loadHistory = async () => {
     const res = await api.get(`/flows/${pipelineId}/history`)
     historyList.value = res.data
   } catch { /* handled */ } finally { historyLoading.value = false }
+}
+
+const loadComponentPresets = async (componentType) => {
+  if (!componentType) {
+    componentPresets.value = []
+    return
+  }
+  loadingPresets.value = true
+  try {
+    const res = await api.get(`/presets/component/${componentType}`)
+    componentPresets.value = res.data || []
+  } catch { /* handled */ } finally {
+    loadingPresets.value = false
+  }
+}
+
+watch(selectedNode, (newNode) => {
+  if (newNode?.data?.component) {
+    loadComponentPresets(newNode.data.component)
+    selectedPresetId.value = null
+  } else {
+    componentPresets.value = []
+    selectedPresetId.value = null
+  }
+})
+
+const computeDiff = (currentConfig, presetConfig) => {
+  const changes = {}
+  const allKeys = new Set([...Object.keys(currentConfig || {}), ...Object.keys(presetConfig || {})])
+
+  for (const key of allKeys) {
+    const oldVal = currentConfig?.[key]
+    const newVal = presetConfig?.[key]
+    const oldStr = JSON.stringify(oldVal)
+    const newStr = JSON.stringify(newVal)
+    if (oldStr !== newStr) {
+      changes[key] = { oldValue: oldVal, newValue: newVal }
+    }
+  }
+  return changes
+}
+
+const formatDiffValue = (val) => {
+  if (val === undefined || val === null) return '(空)'
+  if (typeof val === 'boolean') return val ? '开启' : '关闭'
+  if (typeof val === 'object') return JSON.stringify(val)
+  return String(val)
+}
+
+const handlePresetSelect = async (presetId) => {
+  if (!presetId || !selectedNode.value) return
+  try {
+    const res = await api.get(`/presets/${presetId}`)
+    const preset = res.data
+    pendingPreset.value = preset
+
+    const changes = computeDiff(selectedNode.value.data.config, preset.config)
+    diffData.value = {
+      presetName: preset.name,
+      presetId: preset.id,
+      changes
+    }
+    diffDialogVisible.value = true
+  } catch { /* handled */ } finally {
+    selectedPresetId.value = null
+  }
+}
+
+const confirmLoadPreset = async () => {
+  if (!pendingPreset.value || !selectedNode.value) return
+  try {
+    await api.post(`/presets/${pendingPreset.value.id}/load`)
+    selectedNode.value.data.config = JSON.parse(JSON.stringify(pendingPreset.value.config))
+    syncNodeData()
+    ElMessage.success('预设加载成功')
+    diffDialogVisible.value = false
+    pendingPreset.value = null
+    loadComponentPresets(selectedNode.value.data.component)
+  } catch { /* handled */ }
+}
+
+const openSavePresetDialog = () => {
+  if (!selectedNode.value) return
+  savePresetForm.name = `${selectedNode.value.data.label} 配置`
+  savePresetForm.description = ''
+  savePresetForm.tags = []
+  savePresetForm.is_public = false
+  savePresetDialogVisible.value = true
+}
+
+const resetSavePresetForm = () => {
+  savePresetFormRef.value?.resetFields()
+}
+
+const handleSavePreset = async () => {
+  if (!selectedNode.value) return
+  await savePresetFormRef.value?.validate()
+  savingPreset.value = true
+  try {
+    await api.post('/presets', {
+      name: savePresetForm.name,
+      component_type: selectedNode.value.data.component,
+      config: JSON.parse(JSON.stringify(selectedNode.value.data.config)),
+      description: savePresetForm.description,
+      tags: savePresetForm.tags,
+      is_public: savePresetForm.is_public
+    })
+    ElMessage.success('预设保存成功')
+    savePresetDialogVisible.value = false
+    loadComponentPresets(selectedNode.value.data.component)
+  } catch { /* handled */ } finally {
+    savingPreset.value = false
+  }
 }
 
 const loadFlow = async () => {
@@ -655,4 +935,135 @@ onMounted(() => { loadFlow(); loadHistory() })
 .slide-enter-active, .slide-leave-active { transition: all 0.3s ease; overflow: hidden; }
 .slide-enter-from, .slide-leave-to { max-height: 0; opacity: 0; }
 .slide-enter-to, .slide-leave-from { max-height: 500px; opacity: 1; }
+
+.preset-actions {
+  margin-bottom: 8px;
+}
+
+.preset-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.preset-option span:first-child {
+  flex: 1;
+  font-size: 13px;
+}
+
+.preset-usage {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.diff-preview {
+  display: flex;
+  flex-direction: column;
+}
+
+.diff-info {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.diff-info p {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.diff-hint {
+  font-size: 12px !important;
+  color: var(--text-secondary) !important;
+}
+
+.diff-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.diff-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.diff-key {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.diff-values {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.diff-old, .diff-new {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.diff-old {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.diff-new {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.diff-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.diff-value {
+  display: block;
+  font-family: 'Consolas', 'Monaco', monospace;
+  word-break: break-all;
+}
+
+.diff-arrow {
+  color: var(--text-secondary);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.diff-no-change {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.diff-no-change .el-icon {
+  color: var(--color-success);
+  font-size: 20px;
+}
+
+.tip-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+:deep(.el-dialog__body) {
+  padding-top: 10px;
+}
 </style>

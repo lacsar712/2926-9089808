@@ -316,3 +316,35 @@ INSERT INTO `environment_config` (`environment`, `label`, `default_tag_ids`, `qu
 ('development', '开发环境', '[1, 2]', 1.00),
 ('test', '测试环境', '[1, 2, 3]', 1.50),
 ('production', '生产环境', '[1, 3, 4]', 2.00);
+
+-- 预设表
+CREATE TABLE IF NOT EXISTS `preset` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL COMMENT '预设名称',
+  `component_type` VARCHAR(50) NOT NULL COMMENT '组件类型',
+  `config` JSON NOT NULL COMMENT '配置JSON',
+  `description` TEXT COMMENT '描述',
+  `tags` VARCHAR(255) COMMENT '标签（逗号分隔）',
+  `is_public` TINYINT DEFAULT 0 COMMENT '是否公开 0私有 1公开',
+  `creator_id` INT NOT NULL COMMENT '创建者ID',
+  `creator_name` VARCHAR(50) COMMENT '创建者名称',
+  `usage_count` INT DEFAULT 0 COMMENT '使用次数',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`creator_id`) REFERENCES `sys_user`(`id`) ON DELETE CASCADE,
+  INDEX idx_component_type (`component_type`),
+  INDEX idx_creator_id (`creator_id`),
+  INDEX idx_is_public (`is_public`),
+  INDEX idx_usage_count (`usage_count`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 预设种子数据
+INSERT INTO `preset` (`name`, `component_type`, `config`, `description`, `tags`, `is_public`, `creator_id`, `creator_name`, `usage_count`) VALUES
+('MySQL生产库读取', 'database-reader', '{"host":"10.0.1.100","port":3306,"database":"production","table":"main_data"}', '生产环境MySQL数据库读取配置', 'mysql,生产环境', 1, 1, '系统管理员', 15),
+('MySQL测试库读取', 'database-reader', '{"host":"10.0.2.100","port":3306,"database":"test","table":"test_data"}', '测试环境MySQL数据库读取配置', 'mysql,测试环境', 1, 1, '系统管理员', 8),
+('高频API采集', 'api-connector', '{"url":"https://api.example.com/realtime","method":"GET","interval":"1m","format":"json"}', '每分钟一次的高频API数据采集', 'api,实时', 1, 1, '系统管理员', 12),
+('标准数据清洗', 'data-cleaner', '{"removeNull":true,"removeDuplicate":true,"trimWhitespace":true}', '通用数据清洗规则', '清洗,通用', 1, 1, '系统管理员', 25),
+('中文文本归一化', 'text-normalizer', '{"lowercase":false,"removeSpecialChars":true,"encoding":"utf-8"}', '中文文本处理专用归一化配置', '文本,中文', 1, 2, '张三', 6),
+('BERT中文NER', 'ner-model', '{"model":"bert-base-chinese","entityTypes":["PER","ORG","LOC","TIME"],"confidence":0.85}', '基于BERT的中文实体识别', 'ner,bert', 1, 1, '系统管理员', 18),
+('金融情感分析', 'sentiment-model', '{"model":"finbert-sentiment","labels":["positive","negative","neutral"]}', '金融领域专用情感分析模型', '情感分析,金融', 1, 2, '张三', 9),
+('Neo4j图谱构建', 'kg-builder', '{"graphDB":"neo4j","host":"10.0.1.200","port":7687}', 'Neo4j图数据库连接配置', 'neo4j,知识图谱', 1, 1, '系统管理员', 11);

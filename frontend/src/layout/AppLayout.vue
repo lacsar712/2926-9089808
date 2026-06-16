@@ -49,6 +49,10 @@
           <el-icon><Connection /></el-icon>
           <template #title>数据血缘</template>
         </el-menu-item>
+        <el-menu-item index="/presets">
+          <el-icon><SetUp /></el-icon>
+          <template #title>参数预设库</template>
+        </el-menu-item>
         <el-menu-item v-if="userRole === 'admin'" index="/approval">
           <el-icon><Check /></el-icon>
           <template #title>发布审批</template>
