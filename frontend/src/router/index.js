@@ -37,6 +37,12 @@ const routes = [
                 meta: { title: '监控详情', icon: 'View', activeMenu: '/monitor' }
             },
             {
+                path: 'alert',
+                name: 'Alert',
+                component: () => import('@/views/alert/AlertView.vue'),
+                meta: { title: '告警规则', icon: 'Bell' }
+            },
+            {
                 path: 'system/user',
                 name: 'SystemUser',
                 component: () => import('@/views/system/UserManage.vue'),

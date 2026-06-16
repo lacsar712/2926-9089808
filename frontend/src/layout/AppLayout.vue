@@ -31,6 +31,10 @@
           <el-icon><DataLine /></el-icon>
           <template #title>生产线监控</template>
         </el-menu-item>
+        <el-menu-item index="/alert">
+          <el-icon><Bell /></el-icon>
+          <template #title>告警规则</template>
+        </el-menu-item>
         <el-sub-menu index="/system">
           <template #title>
             <el-icon><Setting /></el-icon>

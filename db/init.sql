@@ -99,6 +99,35 @@ CREATE TABLE IF NOT EXISTS `node_run_detail` (
   FOREIGN KEY (`run_id`) REFERENCES `pipeline_run`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `alert_rule` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL,
+  `pipeline_id` INT DEFAULT NULL COMMENT '关联生产线ID, NULL表示全部',
+  `condition_type` ENUM('run_failed','run_timeout','error_threshold','consecutive_failure') NOT NULL,
+  `threshold` INT DEFAULT 0 COMMENT '阈值参数: 超时分钟数/错误数阈值/连续失败次数',
+  `silence_minutes` INT DEFAULT 0 COMMENT '静默期分钟数',
+  `notify_channel` VARCHAR(50) DEFAULT 'in_app' COMMENT '通知渠道: in_app / email',
+  `enabled` TINYINT DEFAULT 1 COMMENT '1启用 0禁用',
+  `creator_id` INT,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`pipeline_id`) REFERENCES `pipeline`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`creator_id`) REFERENCES `sys_user`(`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `alert_event` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `rule_id` INT NOT NULL,
+  `rule_name` VARCHAR(100) NOT NULL,
+  `pipeline_id` INT DEFAULT NULL,
+  `run_id` INT DEFAULT NULL COMMENT '关联的运行记录ID',
+  `triggered_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `confirmed` TINYINT DEFAULT 0 COMMENT '0未确认 1已确认',
+  `confirmed_by` VARCHAR(50) DEFAULT NULL,
+  `confirmed_at` DATETIME DEFAULT NULL,
+  FOREIGN KEY (`rule_id`) REFERENCES `alert_rule`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- 操作日志表
 CREATE TABLE IF NOT EXISTS `operation_log` (
   `id` INT PRIMARY KEY AUTO_INCREMENT,
@@ -211,3 +240,16 @@ INSERT INTO `operation_log` (`user_id`, `username`, `action`, `target`, `detail`
 (2, 'zhangsan', '启动运行', '医疗文献分析流水线', '手动触发运行', '192.168.1.101'),
 (1, 'admin', '创建标签', '知识图谱', '新增标签分类', '192.168.1.100'),
 (3, 'lisi', '查看监控', '金融舆情监控', '查看运行监控数据', '192.168.1.102');
+
+-- 告警规则
+INSERT INTO `alert_rule` (`name`, `pipeline_id`, `condition_type`, `threshold`, `silence_minutes`, `notify_channel`, `enabled`, `creator_id`) VALUES
+('运行失败告警', NULL, 'run_failed', 0, 30, 'in_app', 1, 1),
+('错误数阈值告警', 1, 'error_threshold', 50, 60, 'in_app', 1, 1),
+('连续失败告警', NULL, 'consecutive_failure', 3, 120, 'email', 1, 1),
+('运行超时告警', 2, 'run_timeout', 120, 30, 'in_app', 1, 2);
+
+-- 告警事件
+INSERT INTO `alert_event` (`rule_id`, `rule_name`, `pipeline_id`, `run_id`, `triggered_at`, `confirmed`, `confirmed_by`, `confirmed_at`) VALUES
+(1, '运行失败告警', 1, 1, '2024-12-10 10:35:00', 1, 'admin', '2024-12-10 11:00:00'),
+(2, '错误数阈值告警', 1, 1, '2024-12-10 10:36:00', 0, NULL, NULL),
+(1, '运行失败告警', 3, 3, '2024-12-18 06:45:00', 0, NULL, NULL);

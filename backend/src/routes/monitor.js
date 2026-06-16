@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../utils/db');
 const logger = require('../utils/logger');
+const { matchAndCreateEvent } = require('./alert');
 
 const router = express.Router();
 
@@ -86,6 +87,28 @@ router.get('/pipeline/:pipelineId/flow', async (req, res) => {
     } catch (error) {
         logger.error('Get monitor flow error:', { message: error.message });
         res.status(500).json({ success: false, message: '获取编排数据失败' });
+    }
+});
+
+router.put('/runs/:runId/status', async (req, res) => {
+    try {
+        const { status } = req.body;
+        if (!status) return res.status(400).json({ success: false, message: '状态不能为空' });
+        const runs = await db.query('SELECT * FROM pipeline_run WHERE id = ?', [req.params.runId]);
+        if (runs.length === 0) return res.status(404).json({ success: false, message: '运行记录不存在' });
+        const run = runs[0];
+        const endTime = ['completed', 'failed', 'cancelled'].includes(status) ? new Date() : null;
+        if (endTime) {
+            await db.query('UPDATE pipeline_run SET status = ?, end_time = ? WHERE id = ?', [status, endTime, req.params.runId]);
+        } else {
+            await db.query('UPDATE pipeline_run SET status = ? WHERE id = ?', [status, req.params.runId]);
+        }
+        const updatedRun = { ...run, status, end_time: endTime || run.end_time };
+        matchAndCreateEvent(updatedRun, run.pipeline_id);
+        res.json({ success: true, message: '状态更新成功' });
+    } catch (error) {
+        logger.error('Update run status error:', { message: error.message });
+        res.status(500).json({ success: false, message: '更新运行状态失败' });
     }
 });
 
