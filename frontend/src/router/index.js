@@ -43,6 +43,12 @@ const routes = [
                 meta: { title: '告警规则', icon: 'Bell' }
             },
             {
+                path: 'lineage',
+                name: 'Lineage',
+                component: () => import('@/views/lineage/LineageView.vue'),
+                meta: { title: '数据血缘', icon: 'Connection' }
+            },
+            {
                 path: 'system/user',
                 name: 'SystemUser',
                 component: () => import('@/views/system/UserManage.vue'),

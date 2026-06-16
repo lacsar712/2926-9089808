@@ -35,6 +35,10 @@
           <el-icon><Bell /></el-icon>
           <template #title>告警规则</template>
         </el-menu-item>
+        <el-menu-item index="/lineage">
+          <el-icon><Connection /></el-icon>
+          <template #title>数据血缘</template>
+        </el-menu-item>
         <el-sub-menu index="/system">
           <template #title>
             <el-icon><Setting /></el-icon>

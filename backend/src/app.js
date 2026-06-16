@@ -12,6 +12,7 @@ const userRoutes = require('./routes/user');
 const logRoutes = require('./routes/log');
 const quotaRoutes = require('./routes/quota');
 const alertRoutes = require('./routes/alert');
+const lineageRoutes = require('./routes/lineage');
 
 const { authMiddleware } = require('./middleware/auth');
 
@@ -38,6 +39,7 @@ app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/logs', authMiddleware, logRoutes);
 app.use('/api/quota', authMiddleware, quotaRoutes);
 app.use('/api/alert', authMiddleware, alertRoutes.router);
+app.use('/api/lineage', authMiddleware, lineageRoutes);
 
 // 全局错误处理
 app.use((err, _req, res, _next) => {
