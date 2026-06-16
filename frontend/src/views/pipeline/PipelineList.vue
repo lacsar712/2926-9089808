@@ -69,7 +69,7 @@
           <el-button size="small" plain @click="openDialog(item)">
             <el-icon><Edit /></el-icon>编辑
           </el-button>
-          <el-popconfirm title="确认删除该生产线？" @confirm="handleDelete(item.id)">
+          <el-popconfirm title="确认将该生产线移入回收站？30天后将自动永久删除。" @confirm="handleDelete(item.id)">
             <template #reference>
               <el-button size="small" type="danger" plain><el-icon><Delete /></el-icon>删除</el-button>
             </template>
@@ -202,8 +202,8 @@ const handleSubmit = async () => {
 
 const handleDelete = async (id) => {
   try {
-    await api.delete(`/pipelines/${id}`)
-    ElMessage.success('删除成功')
+    const res = await api.delete(`/pipelines/${id}`)
+    ElMessage.success(res.message || '已移入回收站')
     loadList()
     loadQuotaUsage()
   } catch { /* handled */ }

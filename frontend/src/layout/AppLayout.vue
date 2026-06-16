@@ -23,10 +23,20 @@
         active-text-color="#818cf8"
         router
       >
-        <el-menu-item index="/pipeline">
-          <el-icon><Operation /></el-icon>
-          <template #title>生产线管理</template>
-        </el-menu-item>
+        <el-sub-menu index="/pipeline-group">
+          <template #title>
+            <el-icon><Operation /></el-icon>
+            <span>生产线管理</span>
+          </template>
+          <el-menu-item index="/pipeline">
+            <el-icon><List /></el-icon>
+            <template #title>生产线列表</template>
+          </el-menu-item>
+          <el-menu-item index="/pipeline/trash">
+            <el-icon><Delete /></el-icon>
+            <template #title>回收站</template>
+          </el-menu-item>
+        </el-sub-menu>
         <el-menu-item index="/monitor">
           <el-icon><DataLine /></el-icon>
           <template #title>生产线监控</template>

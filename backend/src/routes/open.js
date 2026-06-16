@@ -10,7 +10,7 @@ const router = express.Router();
 router.get('/pipelines', apiKeyAuth('read'), async (req, res) => {
     try {
         const { keyword, status, tagId, page = 1, pageSize = 10 } = req.query;
-        let sql = `SELECT p.*, u.nickname as creator_name FROM pipeline p LEFT JOIN sys_user u ON p.creator_id = u.id WHERE 1=1`;
+        let sql = `SELECT p.*, u.nickname as creator_name FROM pipeline p LEFT JOIN sys_user u ON p.creator_id = u.id WHERE p.deleted_at IS NULL`;
         const params = [];
         if (keyword) {
             sql += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
@@ -45,7 +45,7 @@ router.get('/pipelines', apiKeyAuth('read'), async (req, res) => {
 router.get('/pipelines/:id', apiKeyAuth('read'), async (req, res) => {
     try {
         const rows = await db.query(
-            'SELECT p.*, u.nickname as creator_name FROM pipeline p LEFT JOIN sys_user u ON p.creator_id = u.id WHERE p.id = ?',
+            'SELECT p.*, u.nickname as creator_name FROM pipeline p LEFT JOIN sys_user u ON p.creator_id = u.id WHERE p.id = ? AND p.deleted_at IS NULL',
             [req.params.id]
         );
         if (rows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
@@ -65,17 +65,17 @@ router.get('/pipelines/:id', apiKeyAuth('read'), async (req, res) => {
 
 router.get('/monitor/overview', apiKeyAuth('read'), async (_req, res) => {
     try {
-        const [totalPipelines] = await db.query('SELECT COUNT(*) as count FROM pipeline');
-        const [runningPipelines] = await db.query("SELECT COUNT(*) as count FROM pipeline WHERE status = 'running'");
-        const [totalRuns] = await db.query('SELECT COUNT(*) as count FROM pipeline_run');
-        const [failedRuns] = await db.query("SELECT COUNT(*) as count FROM pipeline_run WHERE status = 'failed'");
+        const [totalPipelines] = await db.query('SELECT COUNT(*) as count FROM pipeline WHERE deleted_at IS NULL');
+        const [runningPipelines] = await db.query("SELECT COUNT(*) as count FROM pipeline WHERE status = 'running' AND deleted_at IS NULL");
+        const [totalRuns] = await db.query('SELECT COUNT(*) as count FROM pipeline_run r INNER JOIN pipeline p ON r.pipeline_id = p.id WHERE p.deleted_at IS NULL');
+        const [failedRuns] = await db.query("SELECT COUNT(*) as count FROM pipeline_run r INNER JOIN pipeline p ON r.pipeline_id = p.id WHERE r.status = 'failed' AND p.deleted_at IS NULL");
         const recentRuns = await db.query(
-            `SELECT r.*, p.name as pipeline_name FROM pipeline_run r LEFT JOIN pipeline p ON r.pipeline_id = p.id ORDER BY r.start_time DESC LIMIT 10`
+            `SELECT r.*, p.name as pipeline_name FROM pipeline_run r LEFT JOIN pipeline p ON r.pipeline_id = p.id WHERE p.deleted_at IS NULL ORDER BY r.start_time DESC LIMIT 10`
         );
         const pipelineStats = await db.query(
             `SELECT p.id, p.name, p.status, COUNT(r.id) as run_count,
        SUM(r.total_input) as total_input, SUM(r.total_output) as total_output, SUM(r.error_count) as total_errors
-       FROM pipeline p LEFT JOIN pipeline_run r ON p.id = r.pipeline_id GROUP BY p.id ORDER BY run_count DESC`
+       FROM pipeline p LEFT JOIN pipeline_run r ON p.id = r.pipeline_id WHERE p.deleted_at IS NULL GROUP BY p.id ORDER BY run_count DESC`
         );
         res.json({
             success: true,
@@ -99,7 +99,7 @@ router.get('/monitor/overview', apiKeyAuth('read'), async (_req, res) => {
 router.get('/monitor/runs', apiKeyAuth('read'), async (req, res) => {
     try {
         const { pipelineId, status } = req.query;
-        let sql = `SELECT r.*, p.name as pipeline_name FROM pipeline_run r LEFT JOIN pipeline p ON r.pipeline_id = p.id WHERE 1=1`;
+        let sql = `SELECT r.*, p.name as pipeline_name FROM pipeline_run r LEFT JOIN pipeline p ON r.pipeline_id = p.id WHERE p.deleted_at IS NULL`;
         const params = [];
         if (pipelineId) { sql += ' AND r.pipeline_id = ?'; params.push(pipelineId); }
         if (status) { sql += ' AND r.status = ?'; params.push(status); }
@@ -138,6 +138,8 @@ router.put('/flows/:pipelineId', apiKeyAuth('write'), async (req, res) => {
     try {
         const { flowData } = req.body;
         if (!flowData) return res.status(400).json({ success: false, message: '编排数据不能为空' });
+        const pipelineRows = await db.query('SELECT id FROM pipeline WHERE id = ? AND deleted_at IS NULL', [req.params.pipelineId]);
+        if (pipelineRows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
         const existing = await db.query('SELECT id FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (existing.length === 0) {
             await db.query('INSERT INTO pipeline_flow (pipeline_id, flow_data) VALUES (?, ?)',

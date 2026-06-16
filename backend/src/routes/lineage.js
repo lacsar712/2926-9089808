@@ -40,7 +40,7 @@ const getLatestRunStats = async (pipelineId) => {
 
 const buildLineage = async (pipelineId) => {
     const [pipelineRows, flowRows] = await Promise.all([
-        db.query('SELECT * FROM pipeline WHERE id = ?', [pipelineId]),
+        db.query('SELECT * FROM pipeline WHERE id = ? AND deleted_at IS NULL', [pipelineId]),
         db.query('SELECT flow_data FROM pipeline_flow WHERE pipeline_id = ?', [pipelineId])
     ]);
     if (pipelineRows.length === 0) {

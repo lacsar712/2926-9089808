@@ -9,6 +9,8 @@ const router = express.Router();
 // 获取编排数据
 router.get('/:pipelineId', async (req, res) => {
     try {
+        const pipelineRows = await db.query('SELECT id FROM pipeline WHERE id = ? AND deleted_at IS NULL', [req.params.pipelineId]);
+        if (pipelineRows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
         const rows = await db.query('SELECT * FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (rows.length === 0) return res.status(404).json({ success: false, message: '编排数据不存在' });
         const flowData = typeof rows[0].flow_data === 'string' ? JSON.parse(rows[0].flow_data) : rows[0].flow_data;
@@ -24,10 +26,13 @@ router.put('/:pipelineId', roleGuard('admin', 'editor'), async (req, res) => {
     try {
         const { flowData } = req.body;
         if (!flowData) return res.status(400).json({ success: false, message: '编排数据不能为空' });
-        
+
+        const pipelineRows = await db.query('SELECT id FROM pipeline WHERE id = ? AND deleted_at IS NULL', [req.params.pipelineId]);
+        if (pipelineRows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
+
         const nodeCount = flowData.nodes ? flowData.nodes.length : 0;
         await quotaUtil.validateNodeQuota(req.user.id, req.params.pipelineId, nodeCount);
-        
+
         const existing = await db.query('SELECT id FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (existing.length === 0) {
             await db.query('INSERT INTO pipeline_flow (pipeline_id, flow_data) VALUES (?, ?)',
@@ -57,14 +62,16 @@ router.put('/:pipelineId', roleGuard('admin', 'editor'), async (req, res) => {
 router.post('/:pipelineId/publish', roleGuard('admin', 'editor'), async (req, res) => {
     try {
         const { remark } = req.body;
-        
+
+        const existRows = await db.query('SELECT id, version FROM pipeline WHERE id = ? AND deleted_at IS NULL', [req.params.pipelineId]);
+        if (existRows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
+
         await quotaUtil.validateQuota(req.user.id, quotaUtil.QUOTA_DIMENSIONS.PUBLISHES_PER_DAY, 1);
-        
+
         const flowRows = await db.query('SELECT flow_data FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (flowRows.length === 0) return res.status(400).json({ success: false, message: '请先编排生产线' });
 
-        const pipelineRows = await db.query('SELECT version FROM pipeline WHERE id = ?', [req.params.pipelineId]);
-        const newVersion = (pipelineRows[0]?.version || 0) + 1;
+        const newVersion = (existRows[0]?.version || 0) + 1;
 
         await db.query('UPDATE pipeline SET status = ?, version = ? WHERE id = ?', ['published', newVersion, req.params.pipelineId]);
         await db.query(
@@ -95,6 +102,8 @@ router.post('/:pipelineId/publish', roleGuard('admin', 'editor'), async (req, re
 // 检查编排合法性
 router.post('/:pipelineId/check', async (req, res) => {
     try {
+        const pipelineRows = await db.query('SELECT id FROM pipeline WHERE id = ? AND deleted_at IS NULL', [req.params.pipelineId]);
+        if (pipelineRows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
         const flowRows = await db.query('SELECT flow_data FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (flowRows.length === 0) return res.json({ success: true, data: { valid: false, errors: ['编排数据为空'] } });
         const flowData = typeof flowRows[0].flow_data === 'string' ? JSON.parse(flowRows[0].flow_data) : flowRows[0].flow_data;
@@ -119,6 +128,8 @@ router.post('/:pipelineId/check', async (req, res) => {
 // 获取发布历史
 router.get('/:pipelineId/history', async (req, res) => {
     try {
+        const pipelineRows = await db.query('SELECT id FROM pipeline WHERE id = ? AND deleted_at IS NULL', [req.params.pipelineId]);
+        if (pipelineRows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
         const rows = await db.query(
             'SELECT * FROM pipeline_history WHERE pipeline_id = ? ORDER BY created_at DESC',
             [req.params.pipelineId]

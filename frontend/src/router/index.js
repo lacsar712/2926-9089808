@@ -25,6 +25,12 @@ const routes = [
                 meta: { title: '生产线编排', icon: 'Share', activeMenu: '/pipeline' }
             },
             {
+                path: 'pipeline/trash',
+                name: 'PipelineTrash',
+                component: () => import('@/views/pipeline/PipelineTrash.vue'),
+                meta: { title: '回收站', icon: 'Delete', activeMenu: '/pipeline' }
+            },
+            {
                 path: 'monitor',
                 name: 'Monitor',
                 component: () => import('@/views/monitor/MonitorDashboard.vue'),

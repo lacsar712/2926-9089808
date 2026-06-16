@@ -47,13 +47,15 @@ const getUsage = async (userId) => {
         tagCount,
         todayPublishCount
     ] = await Promise.all([
-        db.query('SELECT COUNT(*) as count FROM pipeline WHERE creator_id = ?', [userId]),
+        db.query('SELECT COUNT(*) as count FROM pipeline WHERE creator_id = ? AND deleted_at IS NULL', [userId]),
         db.query('SELECT COUNT(*) as count FROM tag'),
         db.query(
-            `SELECT COUNT(*) as count FROM pipeline_history 
-             WHERE operator = (SELECT username FROM sys_user WHERE id = ?) 
-             AND action = 'publish' 
-             AND DATE(created_at) = CURDATE()`,
+            `SELECT COUNT(*) as count FROM pipeline_history ph
+             INNER JOIN pipeline p ON ph.pipeline_id = p.id
+             WHERE ph.operator = (SELECT username FROM sys_user WHERE id = ?)
+             AND ph.action = 'publish'
+             AND DATE(ph.created_at) = CURDATE()
+             AND p.deleted_at IS NULL`,
             [userId]
         )
     ]);

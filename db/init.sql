@@ -34,7 +34,11 @@ CREATE TABLE IF NOT EXISTS `pipeline` (
   `creator_id` INT,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`creator_id`) REFERENCES `sys_user`(`id`)
+  `deleted_at` DATETIME DEFAULT NULL COMMENT '软删除时间',
+  `deleted_by` INT DEFAULT NULL COMMENT '软删除用户ID',
+  FOREIGN KEY (`creator_id`) REFERENCES `sys_user`(`id`),
+  FOREIGN KEY (`deleted_by`) REFERENCES `sys_user`(`id`),
+  INDEX idx_deleted_at (`deleted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 生产线标签关联表
