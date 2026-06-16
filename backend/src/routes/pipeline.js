@@ -10,9 +10,11 @@ const TRASH_RETENTION_DAYS = 30;
 
 router.get('/', async (req, res) => {
     try {
-        const { keyword, status, tagId, page = 1, pageSize = 10 } = req.query;
+        const { keyword, status, tagId, environment, page = 1, pageSize = 10 } = req.query;
         let sql = `SELECT p.*, u.nickname as creator_name FROM pipeline p LEFT JOIN sys_user u ON p.creator_id = u.id WHERE p.deleted_at IS NULL`;
         const params = [];
+        sql += ` AND p.environment = ?`;
+        params.push(environment || req.environment);
         if (keyword) { sql += ` AND (p.name LIKE ? OR p.description LIKE ?)`; params.push(`%${keyword}%`, `%${keyword}%`); }
         if (status) { sql += ` AND p.status = ?`; params.push(status); }
         if (tagId) {
@@ -48,8 +50,9 @@ router.get('/trash', async (req, res) => {
                    LEFT JOIN sys_user u ON p.creator_id = u.id
                    LEFT JOIN sys_user du ON p.deleted_by = du.id
                    WHERE p.deleted_at IS NOT NULL
-                   AND p.deleted_at >= DATE_SUB(NOW(), INTERVAL ${TRASH_RETENTION_DAYS} DAY)`;
-        const params = [];
+                   AND p.deleted_at >= DATE_SUB(NOW(), INTERVAL ${TRASH_RETENTION_DAYS} DAY)
+                   AND p.environment = ?`;
+        const params = [req.environment];
         if (keyword) { sql += ` AND (p.name LIKE ? OR p.description LIKE ?)`; params.push(`%${keyword}%`, `%${keyword}%`); }
         const countSql = sql.replace('SELECT p.*, u.nickname as creator_name, du.nickname as deleter_name', 'SELECT COUNT(*) as total');
         const [countResult] = await db.query(countSql, params);
@@ -124,8 +127,8 @@ router.get('/trash/stats', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const rows = await db.query(
-            'SELECT p.*, u.nickname as creator_name FROM pipeline p LEFT JOIN sys_user u ON p.creator_id = u.id WHERE p.id = ? AND p.deleted_at IS NULL',
-            [req.params.id]
+            'SELECT p.*, u.nickname as creator_name FROM pipeline p LEFT JOIN sys_user u ON p.creator_id = u.id WHERE p.id = ? AND p.deleted_at IS NULL AND p.environment = ?',
+            [req.params.id, req.environment]
         );
         if (rows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
         const pipeline = rows[0];
@@ -142,14 +145,15 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', roleGuard('admin', 'editor'), async (req, res) => {
     try {
-        const { name, description, tagIds = [] } = req.body;
+        const { name, description, tagIds = [], environment } = req.body;
         if (!name || !name.trim()) return res.status(400).json({ success: false, message: '生产线名称不能为空' });
 
         await quotaUtil.validateQuota(req.user.id, quotaUtil.QUOTA_DIMENSIONS.PIPELINES, 1);
 
+        const pipelineEnv = req.user.role === 'admin' ? (environment || req.environment) : req.environment;
         const result = await db.query(
-            'INSERT INTO pipeline (name, description, creator_id) VALUES (?, ?, ?)',
-            [name.trim(), description || '', req.user.id]
+            'INSERT INTO pipeline (name, description, creator_id, environment) VALUES (?, ?, ?, ?)',
+            [name.trim(), description || '', req.user.id, pipelineEnv]
         );
         const pipelineId = result.insertId;
         for (const tagId of tagIds) {
@@ -179,13 +183,14 @@ router.post('/', roleGuard('admin', 'editor'), async (req, res) => {
 
 router.put('/:id', roleGuard('admin', 'editor'), async (req, res) => {
     try {
-        const { name, description, status, tagIds } = req.body;
+        const { name, description, status, tagIds, environment } = req.body;
         if (name !== undefined && !name.trim()) return res.status(400).json({ success: false, message: '名称不能为空' });
         const updates = [];
         const params = [];
         if (name) { updates.push('name = ?'); params.push(name.trim()); }
         if (description !== undefined) { updates.push('description = ?'); params.push(description); }
         if (status) { updates.push('status = ?'); params.push(status); }
+        if (environment && req.user.role === 'admin') { updates.push('environment = ?'); params.push(environment); }
         if (updates.length > 0) {
             params.push(req.params.id);
             await db.query(`UPDATE pipeline SET ${updates.join(', ')} WHERE id = ? AND deleted_at IS NULL`, params);
@@ -252,7 +257,7 @@ router.post('/restore/batch', roleGuard('admin', 'editor'), async (req, res) => 
 
 router.delete('/:id', roleGuard('admin', 'editor'), async (req, res) => {
     try {
-        const rows = await db.query('SELECT name FROM pipeline WHERE id = ? AND deleted_at IS NULL', [req.params.id]);
+        const rows = await db.query('SELECT name FROM pipeline WHERE id = ? AND deleted_at IS NULL AND environment = ?', [req.params.id, req.environment]);
         if (rows.length === 0) return res.status(404).json({ success: false, message: '生产线不存在' });
         await db.query(
             'UPDATE pipeline SET deleted_at = NOW(), deleted_by = ? WHERE id = ?',

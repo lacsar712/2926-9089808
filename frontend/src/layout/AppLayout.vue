@@ -70,6 +70,10 @@
             <el-icon><PriceTag /></el-icon>
             <template #title>标签管理</template>
           </el-menu-item>
+          <el-menu-item index="/system/environment">
+            <el-icon><Monitor /></el-icon>
+            <template #title>环境管理</template>
+          </el-menu-item>
           <el-menu-item index="/system/log">
             <el-icon><Document /></el-icon>
             <template #title>操作日志</template>
@@ -100,6 +104,28 @@
           </el-breadcrumb>
         </div>
         <div class="user-area">
+          <div class="env-selector">
+            <el-dropdown trigger="click" @command="handleEnvChange">
+              <div class="env-badge" :class="currentEnv">
+                <span class="env-dot"></span>
+                <span class="env-label">{{ envLabel }}</span>
+                <el-icon><ArrowDown /></el-icon>
+              </div>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="development" :class="{ 'is-active': currentEnv === 'development' }">
+                    <span class="env-dot development"></span>开发环境
+                  </el-dropdown-item>
+                  <el-dropdown-item command="test" :class="{ 'is-active': currentEnv === 'test' }">
+                    <span class="env-dot test"></span>测试环境
+                  </el-dropdown-item>
+                  <el-dropdown-item command="production" :class="{ 'is-active': currentEnv === 'production' }">
+                    <span class="env-dot production"></span>生产环境
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
           <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-info">
               <el-avatar :size="32" :style="{ background: 'var(--gradient-primary)' }">
@@ -141,6 +167,16 @@ import { useRoute, useRouter } from 'vue-router'
 const route = useRoute()
 const router = useRouter()
 const isCollapsed = ref(false)
+
+const ENV_MAP = { development: '开发环境', test: '测试环境', production: '生产环境' }
+const currentEnv = ref(localStorage.getItem('currentEnvironment') || 'development')
+const envLabel = computed(() => ENV_MAP[currentEnv.value] || currentEnv.value)
+
+const handleEnvChange = (env) => {
+  currentEnv.value = env
+  localStorage.setItem('currentEnvironment', env)
+  window.location.reload()
+}
 
 const userInfo = computed(() => {
   try { return JSON.parse(localStorage.getItem('userInfo') || '{}') } catch { return {} }
@@ -292,6 +328,39 @@ const handleCommand = (cmd) => {
   font-size: 14px;
   color: var(--text-primary);
 }
+.env-selector {
+  margin-right: 16px;
+}
+.env-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: var(--transition);
+  border: 1px solid transparent;
+}
+.env-badge:hover {
+  background: var(--bg-hover);
+}
+.env-badge.development { color: #67C23A; border-color: rgba(103, 194, 58, 0.3); }
+.env-badge.test { color: #E6A23C; border-color: rgba(230, 162, 60, 0.3); }
+.env-badge.production { color: #F56C6C; border-color: rgba(245, 108, 108, 0.3); }
+.env-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.env-badge.development .env-dot { background: #67C23A; }
+.env-badge.test .env-dot { background: #E6A23C; }
+.env-badge.production .env-dot { background: #F56C6C; }
+.env-dot.development { background: #67C23A; }
+.env-dot.test { background: #E6A23C; }
+.env-dot.production { background: #F56C6C; }
 .content-area {
   flex: 1;
   overflow: hidden;

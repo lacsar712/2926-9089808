@@ -14,6 +14,10 @@ api.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
         }
+        const env = localStorage.getItem('currentEnvironment')
+        if (env) {
+            config.headers['X-Environment'] = env
+        }
         return config
     },
     (error) => Promise.reject(error)

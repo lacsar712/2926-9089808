@@ -16,14 +16,20 @@ const lineageRoutes = require('./routes/lineage');
 const apiKeyRoutes = require('./routes/apiKey');
 const openRoutes = require('./routes/open');
 const approvalRoutes = require('./routes/approval');
+const environmentRoutes = require('./routes/environment');
 
 const { authMiddleware } = require('./middleware/auth');
+const { environmentMiddleware } = require('./middleware/environment');
 
 const app = express();
 const PORT = 3001;
 
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Environment']
+}));
 app.use(express.json({ limit: '10mb' }));
+app.use(environmentMiddleware);
 
 // 健康检查
 app.get('/api/health', (_req, res) => {
@@ -48,6 +54,7 @@ app.use('/api/alert', authMiddleware, alertRoutes.router);
 app.use('/api/lineage', authMiddleware, lineageRoutes);
 app.use('/api/api-keys', authMiddleware, apiKeyRoutes);
 app.use('/api/approval', authMiddleware, approvalRoutes);
+app.use('/api/environments', authMiddleware, environmentRoutes);
 
 // 全局错误处理
 app.use((err, _req, res, _next) => {

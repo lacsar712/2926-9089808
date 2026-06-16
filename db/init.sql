@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS `pipeline` (
   `description` TEXT,
   `status` ENUM('draft','published','running','stopped','error') DEFAULT 'draft',
   `version` INT DEFAULT 1,
+  `environment` VARCHAR(20) NOT NULL DEFAULT 'development' COMMENT 'dev/development, test, production',
   `creator_id` INT,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -38,7 +39,8 @@ CREATE TABLE IF NOT EXISTS `pipeline` (
   `deleted_by` INT DEFAULT NULL COMMENT '软删除用户ID',
   FOREIGN KEY (`creator_id`) REFERENCES `sys_user`(`id`),
   FOREIGN KEY (`deleted_by`) REFERENCES `sys_user`(`id`),
-  INDEX idx_deleted_at (`deleted_at`)
+  INDEX idx_deleted_at (`deleted_at`),
+  INDEX idx_environment (`environment`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 生产线标签关联表
@@ -191,12 +193,12 @@ INSERT INTO `tag` (`name`, `color`) VALUES
 ('测试环境', '#51cf66');
 
 -- 生产线
-INSERT INTO `pipeline` (`name`, `description`, `status`, `version`, `creator_id`) VALUES
-('企业知识图谱构建', '从多源数据中抽取实体和关系，构建企业级知识图谱', 'published', 3, 1),
-('医疗文献分析流水线', '对医学文献进行结构化处理和知识抽取', 'running', 2, 2),
-('金融舆情监控', '实时采集金融新闻并进行情感分析与实体关联', 'published', 1, 1),
-('电商评论分析', '用户评论的情感分析和产品特征抽取', 'draft', 1, 2),
-('法律文书结构化', '法律文书的自动解析、实体抽取和关系构建', 'stopped', 2, 1);
+INSERT INTO `pipeline` (`name`, `description`, `status`, `version`, `creator_id`, `environment`) VALUES
+('企业知识图谱构建', '从多源数据中抽取实体和关系，构建企业级知识图谱', 'published', 3, 1, 'development'),
+('医疗文献分析流水线', '对医学文献进行结构化处理和知识抽取', 'running', 2, 2, 'test'),
+('金融舆情监控', '实时采集金融新闻并进行情感分析与实体关联', 'published', 1, 1, 'production'),
+('电商评论分析', '用户评论的情感分析和产品特征抽取', 'draft', 1, 2, 'development'),
+('法律文书结构化', '法律文书的自动解析、实体抽取和关系构建', 'stopped', 2, 1, 'test');
 
 -- 生产线标签关联
 INSERT INTO `pipeline_tag` (`pipeline_id`, `tag_id`) VALUES
@@ -298,3 +300,19 @@ CREATE TABLE IF NOT EXISTS `api_key` (
   INDEX idx_user_id (`user_id`),
   INDEX idx_status (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `environment_config` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `environment` VARCHAR(20) NOT NULL UNIQUE COMMENT 'development, test, production',
+  `label` VARCHAR(50) NOT NULL COMMENT '显示名称',
+  `default_tag_ids` JSON COMMENT '默认标签集ID数组',
+  `quota_multiplier` DECIMAL(5,2) NOT NULL DEFAULT 1.00 COMMENT '配额倍率',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_environment (`environment`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `environment_config` (`environment`, `label`, `default_tag_ids`, `quota_multiplier`) VALUES
+('development', '开发环境', '[1, 2]', 1.00),
+('test', '测试环境', '[1, 2, 3]', 1.50),
+('production', '生产环境', '[1, 3, 4]', 2.00);

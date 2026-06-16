@@ -39,6 +39,11 @@
           </div>
         </el-option>
       </el-select>
+      <el-select v-model="filters.environment" placeholder="环境筛选" clearable style="width: 140px" @change="loadList">
+        <el-option label="开发环境" value="development" />
+        <el-option label="测试环境" value="test" />
+        <el-option label="生产环境" value="production" />
+      </el-select>
       <el-button @click="loadList" type="primary" plain><el-icon><Search /></el-icon>搜索</el-button>
     </div>
 
@@ -47,9 +52,12 @@
       <div v-for="item in list" :key="item.id" class="pipeline-card">
         <div class="card-header">
           <h3>{{ item.name }}</h3>
-          <span class="status-badge" :class="item.status">
-            <span class="dot"></span>{{ statusMap[item.status] }}
-          </span>
+          <div class="card-header-right">
+            <span class="env-tag" :class="item.environment">{{ envMap[item.environment] || item.environment }}</span>
+            <span class="status-badge" :class="item.status">
+              <span class="dot"></span>{{ statusMap[item.status] }}
+            </span>
+          </div>
         </div>
         <p class="card-desc">{{ item.description || '暂无描述' }}</p>
         <div class="card-tags">
@@ -95,6 +103,14 @@
         <el-form-item label="描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="3" placeholder="请输入描述信息" maxlength="500" show-word-limit />
         </el-form-item>
+        <el-form-item label="环境" prop="environment">
+          <el-select v-model="form.environment" :disabled="!isAdmin" style="width: 100%">
+            <el-option label="开发环境" value="development" />
+            <el-option label="测试环境" value="test" />
+            <el-option label="生产环境" value="production" />
+          </el-select>
+          <div v-if="!isAdmin" class="form-tip">非管理员默认使用当前环境</div>
+        </el-form-item>
         <el-form-item label="标签">
           <el-select v-model="form.tagIds" multiple placeholder="选择标签" style="width: 100%">
             <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id" />
@@ -129,9 +145,16 @@ const formRef = ref()
 const quotaUsage = ref(null)
 
 const statusMap = { draft: '草稿', published: '已发布', running: '运行中', stopped: '已停止', error: '异常' }
-const filters = reactive({ keyword: '', status: '', tagId: '' })
-const form = reactive({ name: '', description: '', tagIds: [] })
+const envMap = { development: '开发', test: '测试', production: '生产' }
+const filters = reactive({ keyword: '', status: '', tagId: '', environment: '' })
+const form = reactive({ name: '', description: '', tagIds: [], environment: 'development' })
 const formRules = { name: [{ required: true, message: '请输入名称', trigger: 'blur' }] }
+
+const userInfo = computed(() => {
+  try { return JSON.parse(localStorage.getItem('userInfo') || '{}') } catch { return {} }
+})
+const isAdmin = computed(() => userInfo.value?.role === 'admin')
+const currentEnv = computed(() => localStorage.getItem('currentEnvironment') || 'development')
 
 const formatDate = (d) => d ? dayjs(d).format('YYYY-MM-DD HH:mm') : '-'
 const formatLimit = (val) => val === -1 ? '无限制' : val
@@ -179,6 +202,7 @@ const openDialog = (item) => {
   form.name = item?.name || ''
   form.description = item?.description || ''
   form.tagIds = item?.tags?.map(t => t.id) || []
+  form.environment = item?.environment || currentEnv.value
   dialogVisible.value = true
 }
 
@@ -252,6 +276,25 @@ onMounted(() => { loadList(); loadTags(); loadQuotaUsage() })
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
+}
+.card-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.env-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.env-tag.development { background: rgba(103, 194, 58, 0.15); color: #67C23A; }
+.env-tag.test { background: rgba(230, 162, 60, 0.15); color: #E6A23C; }
+.env-tag.production { background: rgba(245, 108, 108, 0.15); color: #F56C6C; }
+.form-tip {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
 }
 .card-desc {
   font-size: 13px;

@@ -67,6 +67,12 @@ const routes = [
                 meta: { title: '标签管理', icon: 'PriceTag' }
             },
             {
+                path: 'system/environment',
+                name: 'SystemEnvironment',
+                component: () => import('@/views/system/EnvironmentView.vue'),
+                meta: { title: '环境管理', icon: 'Monitor' }
+            },
+            {
                 path: 'system/log',
                 name: 'SystemLog',
                 component: () => import('@/views/system/LogManage.vue'),
