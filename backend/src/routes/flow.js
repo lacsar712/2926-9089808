@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../utils/db');
 const logger = require('../utils/logger');
 const { roleGuard } = require('../middleware/auth');
+const quotaUtil = require('../utils/quota');
 
 const router = express.Router();
 
@@ -23,6 +24,10 @@ router.put('/:pipelineId', roleGuard('admin', 'editor'), async (req, res) => {
     try {
         const { flowData } = req.body;
         if (!flowData) return res.status(400).json({ success: false, message: '编排数据不能为空' });
+        
+        const nodeCount = flowData.nodes ? flowData.nodes.length : 0;
+        await quotaUtil.validateNodeQuota(req.user.id, req.params.pipelineId, nodeCount);
+        
         const existing = await db.query('SELECT id FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (existing.length === 0) {
             await db.query('INSERT INTO pipeline_flow (pipeline_id, flow_data) VALUES (?, ?)',
@@ -35,6 +40,15 @@ router.put('/:pipelineId', roleGuard('admin', 'editor'), async (req, res) => {
         res.json({ success: true, message: '保存成功' });
     } catch (error) {
         logger.error('Save flow error:', { message: error.message });
+        if (error.code === 'QUOTA_EXCEEDED') {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                code: error.code,
+                remaining: error.remaining,
+                limit: error.limit
+            });
+        }
         res.status(500).json({ success: false, message: '保存编排数据失败' });
     }
 });
@@ -43,6 +57,9 @@ router.put('/:pipelineId', roleGuard('admin', 'editor'), async (req, res) => {
 router.post('/:pipelineId/publish', roleGuard('admin', 'editor'), async (req, res) => {
     try {
         const { remark } = req.body;
+        
+        await quotaUtil.validateQuota(req.user.id, quotaUtil.QUOTA_DIMENSIONS.PUBLISHES_PER_DAY, 1);
+        
         const flowRows = await db.query('SELECT flow_data FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (flowRows.length === 0) return res.status(400).json({ success: false, message: '请先编排生产线' });
 
@@ -62,6 +79,15 @@ router.post('/:pipelineId/publish', roleGuard('admin', 'editor'), async (req, re
         res.json({ success: true, message: `发布成功，当前版本 v${newVersion}` });
     } catch (error) {
         logger.error('Publish pipeline error:', { message: error.message });
+        if (error.code === 'QUOTA_EXCEEDED') {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                code: error.code,
+                remaining: error.remaining,
+                limit: error.limit
+            });
+        }
         res.status(500).json({ success: false, message: '发布失败' });
     }
 });

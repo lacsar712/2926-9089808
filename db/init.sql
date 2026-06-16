@@ -111,7 +111,35 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 全局配额配置表
+CREATE TABLE IF NOT EXISTS `quota_config` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `max_pipelines` INT NOT NULL DEFAULT 10 COMMENT '可创建生产线总数上限, -1表示无限制',
+  `max_tags` INT NOT NULL DEFAULT 20 COMMENT '可创建标签总数上限, -1表示无限制',
+  `max_nodes_per_pipeline` INT NOT NULL DEFAULT 50 COMMENT '单条生产线最大节点数, -1表示无限制',
+  `max_publishes_per_day` INT NOT NULL DEFAULT 10 COMMENT '单日最大发布次数, -1表示无限制',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 用户配额覆盖表
+CREATE TABLE IF NOT EXISTS `user_quota` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `user_id` INT NOT NULL UNIQUE,
+  `max_pipelines` INT COMMENT '可创建生产线总数上限, NULL表示使用全局配置, -1表示无限制',
+  `max_tags` INT COMMENT '可创建标签总数上限, NULL表示使用全局配置, -1表示无限制',
+  `max_nodes_per_pipeline` INT COMMENT '单条生产线最大节点数, NULL表示使用全局配置, -1表示无限制',
+  `max_publishes_per_day` INT COMMENT '单日最大发布次数, NULL表示使用全局配置, -1表示无限制',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `sys_user`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ============ 种子数据 ============
+
+-- 全局配额配置
+INSERT INTO `quota_config` (`max_pipelines`, `max_tags`, `max_nodes_per_pipeline`, `max_publishes_per_day`) VALUES
+(10, 20, 50, 10);
 
 -- 用户（密码均为 123456 的 bcrypt 哈希）
 INSERT INTO `sys_user` (`username`, `password`, `nickname`, `email`, `phone`, `role`, `status`) VALUES
@@ -168,6 +196,11 @@ INSERT INTO `node_run_detail` (`run_id`, `node_id`, `node_name`, `node_type`, `s
 (5, 'node-5', '关系抽取', 'relation-extractor', 'completed', 18900, 18700, 3, '2024-12-20 09:20:00', '2024-12-20 09:50:00', '[{"text":"任正非于1987年创立华为技术有限公司","entities":["任正非","华为技术有限公司"]}]', '[{"subject":"任正非","predicate":"创立","object":"华为技术有限公司","confidence":0.96}]'),
 (5, 'node-6', '知识图谱构建', 'kg-builder', 'completed', 18700, 18500, 2, '2024-12-20 09:50:00', '2024-12-20 10:05:00', '[{"entity1":"任正非","relation":"创立","entity2":"华为技术有限公司"}]', '[{"node_count":8520,"edge_count":15230,"status":"inserted"}]'),
 (5, 'node-7', '图谱浏览器', 'graph-viewer', 'completed', 18500, 18500, 0, '2024-12-20 10:05:00', '2024-12-20 10:10:00', '[{"query":"MATCH (n) RETURN n LIMIT 500"}]', '[{"displayed_nodes":500,"displayed_edges":1200,"layout":"force-directed"}]');
+
+-- 用户配额覆盖（admin无限制，editor有自定义配额）
+INSERT INTO `user_quota` (`user_id`, `max_pipelines`, `max_tags`, `max_nodes_per_pipeline`, `max_publishes_per_day`) VALUES
+(1, -1, -1, -1, -1),
+(2, 5, 10, 30, 5);
 
 -- 操作日志
 INSERT INTO `operation_log` (`user_id`, `username`, `action`, `target`, `detail`, `ip`) VALUES

@@ -7,6 +7,21 @@
       </el-button>
     </div>
 
+    <!-- 配额警告横幅 -->
+    <el-alert
+      v-if="showQuotaWarning"
+      :title="quotaWarningMessage"
+      type="warning"
+      show-icon
+      closable
+      class="quota-warning fade-in-up"
+    >
+      <template #default>
+        <span>当前已使用 {{ quotaUsage?.details?.pipelines?.used }} / {{ formatLimit(quotaUsage?.details?.pipelines?.limit) }}，剩余 {{ formatRemaining(quotaUsage?.details?.pipelines?.remaining) }}。</span>
+        <el-button type="warning" link @click="$router.push('/system/quota')">查看详情</el-button>
+      </template>
+    </el-alert>
+
     <!-- 搜索过滤 -->
     <div class="filter-bar fade-in-up">
       <el-input v-model="filters.keyword" placeholder="搜索生产线名称..." clearable style="width: 280px" prefix-icon="Search" @clear="loadList" @keyup.enter="loadList" />
@@ -95,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import api from '@/utils/request'
 import dayjs from 'dayjs'
@@ -111,12 +126,37 @@ const dialogVisible = ref(false)
 const editId = ref(null)
 const formRef = ref()
 
+const quotaUsage = ref(null)
+
 const statusMap = { draft: '草稿', published: '已发布', running: '运行中', stopped: '已停止', error: '异常' }
 const filters = reactive({ keyword: '', status: '', tagId: '' })
 const form = reactive({ name: '', description: '', tagIds: [] })
 const formRules = { name: [{ required: true, message: '请输入名称', trigger: 'blur' }] }
 
 const formatDate = (d) => d ? dayjs(d).format('YYYY-MM-DD HH:mm') : '-'
+const formatLimit = (val) => val === -1 ? '无限制' : val
+const formatRemaining = (val) => val === Infinity ? '无限制' : val
+
+const showQuotaWarning = computed(() => {
+  if (!quotaUsage.value?.details?.pipelines) return false
+  const { percentage, limit } = quotaUsage.value.details.pipelines
+  return limit !== -1 && percentage >= 70
+})
+
+const quotaWarningMessage = computed(() => {
+  if (!quotaUsage.value?.details?.pipelines) return ''
+  const { percentage } = quotaUsage.value.details.pipelines
+  if (percentage >= 90) return '⚠️ 生产线数量即将达到上限！'
+  if (percentage >= 70) return '⚠️ 生产线数量已接近上限'
+  return ''
+})
+
+const loadQuotaUsage = async () => {
+  try {
+    const res = await api.get('/quota/usage')
+    quotaUsage.value = res.data
+  } catch { /* handled */ }
+}
 
 const loadList = async () => {
   loading.value = true
@@ -153,6 +193,7 @@ const handleSubmit = async () => {
     } else {
       await api.post('/pipelines', form)
       ElMessage.success('创建成功')
+      loadQuotaUsage()
     }
     dialogVisible.value = false
     loadList()
@@ -164,13 +205,17 @@ const handleDelete = async (id) => {
     await api.delete(`/pipelines/${id}`)
     ElMessage.success('删除成功')
     loadList()
+    loadQuotaUsage()
   } catch { /* handled */ }
 }
 
-onMounted(() => { loadList(); loadTags() })
+onMounted(() => { loadList(); loadTags(); loadQuotaUsage() })
 </script>
 
 <style scoped>
+.quota-warning {
+  margin-bottom: 20px;
+}
 .filter-bar {
   display: flex;
   gap: 12px;

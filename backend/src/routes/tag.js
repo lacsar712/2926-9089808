@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../utils/db');
 const logger = require('../utils/logger');
 const { roleGuard } = require('../middleware/auth');
+const quotaUtil = require('../utils/quota');
 
 const router = express.Router();
 
@@ -19,6 +20,9 @@ router.post('/', roleGuard('admin', 'editor'), async (req, res) => {
     try {
         const { name, color } = req.body;
         if (!name || !name.trim()) return res.status(400).json({ success: false, message: '标签名称不能为空' });
+        
+        await quotaUtil.validateQuota(req.user.id, quotaUtil.QUOTA_DIMENSIONS.TAGS, 1);
+        
         const existing = await db.query('SELECT id FROM tag WHERE name = ?', [name.trim()]);
         if (existing.length > 0) return res.status(400).json({ success: false, message: '标签名称已存在' });
         const result = await db.query('INSERT INTO tag (name, color) VALUES (?, ?)', [name.trim(), color || '#409EFF']);
@@ -26,6 +30,15 @@ router.post('/', roleGuard('admin', 'editor'), async (req, res) => {
         res.json({ success: true, data: { id: result.insertId }, message: '创建成功' });
     } catch (error) {
         logger.error('Create tag error:', { message: error.message });
+        if (error.code === 'QUOTA_EXCEEDED') {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                code: error.code,
+                remaining: error.remaining,
+                limit: error.limit
+            });
+        }
         res.status(500).json({ success: false, message: '创建标签失败' });
     }
 });

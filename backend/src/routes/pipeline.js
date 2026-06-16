@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../utils/db');
 const logger = require('../utils/logger');
 const { roleGuard } = require('../middleware/auth');
+const quotaUtil = require('../utils/quota');
 
 const router = express.Router();
 
@@ -64,6 +65,9 @@ router.post('/', roleGuard('admin', 'editor'), async (req, res) => {
     try {
         const { name, description, tagIds = [] } = req.body;
         if (!name || !name.trim()) return res.status(400).json({ success: false, message: '生产线名称不能为空' });
+        
+        await quotaUtil.validateQuota(req.user.id, quotaUtil.QUOTA_DIMENSIONS.PIPELINES, 1);
+
         const result = await db.query(
             'INSERT INTO pipeline (name, description, creator_id) VALUES (?, ?, ?)',
             [name.trim(), description || '', req.user.id]
@@ -82,6 +86,15 @@ router.post('/', roleGuard('admin', 'editor'), async (req, res) => {
         res.json({ success: true, data: { id: pipelineId }, message: '创建成功' });
     } catch (error) {
         logger.error('Create pipeline error:', { message: error.message });
+        if (error.code === 'QUOTA_EXCEEDED') {
+            return res.status(403).json({
+                success: false,
+                message: error.message,
+                code: error.code,
+                remaining: error.remaining,
+                limit: error.limit
+            });
+        }
         res.status(500).json({ success: false, message: '创建生产线失败' });
     }
 });

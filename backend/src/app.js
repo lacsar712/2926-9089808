@@ -10,6 +10,7 @@ const monitorRoutes = require('./routes/monitor');
 const tagRoutes = require('./routes/tag');
 const userRoutes = require('./routes/user');
 const logRoutes = require('./routes/log');
+const quotaRoutes = require('./routes/quota');
 
 const { authMiddleware } = require('./middleware/auth');
 
@@ -34,10 +35,20 @@ app.use('/api/monitor', authMiddleware, monitorRoutes);
 app.use('/api/tags', authMiddleware, tagRoutes);
 app.use('/api/users', authMiddleware, userRoutes);
 app.use('/api/logs', authMiddleware, logRoutes);
+app.use('/api/quota', authMiddleware, quotaRoutes);
 
 // 全局错误处理
 app.use((err, _req, res, _next) => {
     logger.error('Unhandled error:', { message: err.message, stack: err.stack });
+    if (err.code === 'QUOTA_EXCEEDED') {
+        return res.status(403).json({
+            success: false,
+            message: err.message,
+            code: err.code,
+            remaining: err.remaining,
+            limit: err.limit
+        });
+    }
     res.status(500).json({ success: false, message: '服务器内部错误' });
 });
 

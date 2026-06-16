@@ -48,6 +48,10 @@
             <el-icon><Document /></el-icon>
             <template #title>操作日志</template>
           </el-menu-item>
+          <el-menu-item index="/system/quota">
+            <el-icon><Odometer /></el-icon>
+            <template #title>资源配额</template>
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
     </aside>
