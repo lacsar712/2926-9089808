@@ -37,10 +37,20 @@
             <template #title>回收站</template>
           </el-menu-item>
         </el-sub-menu>
-        <el-menu-item index="/monitor">
-          <el-icon><DataLine /></el-icon>
-          <template #title>生产线监控</template>
-        </el-menu-item>
+        <el-sub-menu index="/monitor-group">
+          <template #title>
+            <el-icon><DataLine /></el-icon>
+            <span>生产线监控</span>
+          </template>
+          <el-menu-item index="/monitor">
+            <el-icon><List /></el-icon>
+            <template #title>运行监控</template>
+          </el-menu-item>
+          <el-menu-item index="/monitor/bookmarks">
+            <el-icon><Star /></el-icon>
+            <template #title>我的收藏</template>
+          </el-menu-item>
+        </el-sub-menu>
         <el-menu-item index="/alert">
           <el-icon><Bell /></el-icon>
           <template #title>告警规则</template>

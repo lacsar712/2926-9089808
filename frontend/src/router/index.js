@@ -43,6 +43,12 @@ const routes = [
                 meta: { title: '监控详情', icon: 'View', activeMenu: '/monitor' }
             },
             {
+                path: 'monitor/bookmarks',
+                name: 'MonitorBookmarks',
+                component: () => import('@/views/monitor/MonitorBookmarks.vue'),
+                meta: { title: '我的收藏', icon: 'Star', activeMenu: '/monitor' }
+            },
+            {
                 path: 'alert',
                 name: 'Alert',
                 component: () => import('@/views/alert/AlertView.vue'),

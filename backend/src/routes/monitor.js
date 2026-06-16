@@ -8,14 +8,24 @@ const router = express.Router();
 // 获取生产线运行记录列表
 router.get('/runs', async (req, res) => {
     try {
+        const userId = req.user.id;
         const { pipelineId, status } = req.query;
-        let sql = `SELECT r.*, p.name as pipeline_name FROM pipeline_run r LEFT JOIN pipeline p ON r.pipeline_id = p.id WHERE p.deleted_at IS NULL`;
-        const params = [];
+        let sql = `SELECT r.*, p.name as pipeline_name,
+            CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as bookmarked
+            FROM pipeline_run r
+            LEFT JOIN pipeline p ON r.pipeline_id = p.id
+            LEFT JOIN run_bookmark b ON r.id = b.run_id AND b.user_id = ?
+            WHERE p.deleted_at IS NULL`;
+        const params = [userId];
         if (pipelineId) { sql += ' AND r.pipeline_id = ?'; params.push(pipelineId); }
         if (status) { sql += ' AND r.status = ?'; params.push(status); }
         sql += ' ORDER BY r.start_time DESC LIMIT 50';
         const rows = await db.query(sql, params);
-        res.json({ success: true, data: rows });
+        const result = rows.map(row => ({
+            ...row,
+            bookmarked: row.bookmarked === 1
+        }));
+        res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Get runs error:', { message: error.message });
         res.status(500).json({ success: false, message: '获取运行记录失败' });
@@ -25,18 +35,30 @@ router.get('/runs', async (req, res) => {
 // 获取单次运行详情
 router.get('/runs/:runId', async (req, res) => {
     try {
+        const userId = req.user.id;
         const runs = await db.query(
-            'SELECT r.*, p.name as pipeline_name FROM pipeline_run r LEFT JOIN pipeline p ON r.pipeline_id = p.id WHERE r.id = ?',
-            [req.params.runId]
+            `SELECT r.*, p.name as pipeline_name,
+                CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as bookmarked,
+                b.remark as bookmark_remark,
+                b.created_at as bookmark_time
+                FROM pipeline_run r
+                LEFT JOIN pipeline p ON r.pipeline_id = p.id
+                LEFT JOIN run_bookmark b ON r.id = b.run_id AND b.user_id = ?
+                WHERE r.id = ?`,
+            [userId, req.params.runId]
         );
         if (runs.length === 0) return res.status(404).json({ success: false, message: '运行记录不存在' });
+        const runData = {
+            ...runs[0],
+            bookmarked: runs[0].bookmarked === 1
+        };
         const details = await db.query('SELECT * FROM node_run_detail WHERE run_id = ? ORDER BY start_time', [req.params.runId]);
         const parsedDetails = details.map(d => ({
             ...d,
             input_sample: typeof d.input_sample === 'string' ? JSON.parse(d.input_sample) : d.input_sample,
             output_sample: typeof d.output_sample === 'string' ? JSON.parse(d.output_sample) : d.output_sample
         }));
-        res.json({ success: true, data: { ...runs[0], nodeDetails: parsedDetails } });
+        res.json({ success: true, data: { ...runData, nodeDetails: parsedDetails } });
     } catch (error) {
         logger.error('Get run detail error:', { message: error.message });
         res.status(500).json({ success: false, message: '获取运行详情失败' });
@@ -50,9 +72,20 @@ router.get('/overview', async (_req, res) => {
         const [runningPipelines] = await db.query("SELECT COUNT(*) as count FROM pipeline WHERE status = 'running' AND deleted_at IS NULL");
         const [totalRuns] = await db.query('SELECT COUNT(*) as count FROM pipeline_run r INNER JOIN pipeline p ON r.pipeline_id = p.id WHERE p.deleted_at IS NULL');
         const [failedRuns] = await db.query("SELECT COUNT(*) as count FROM pipeline_run r INNER JOIN pipeline p ON r.pipeline_id = p.id WHERE r.status = 'failed' AND p.deleted_at IS NULL");
-        const recentRuns = await db.query(
-            `SELECT r.*, p.name as pipeline_name FROM pipeline_run r LEFT JOIN pipeline p ON r.pipeline_id = p.id WHERE p.deleted_at IS NULL ORDER BY r.start_time DESC LIMIT 10`
+        const recentRunsRaw = await db.query(
+            `SELECT r.*, p.name as pipeline_name,
+                CASE WHEN b.id IS NOT NULL THEN 1 ELSE 0 END as bookmarked
+                FROM pipeline_run r
+                LEFT JOIN pipeline p ON r.pipeline_id = p.id
+                LEFT JOIN run_bookmark b ON r.id = b.run_id AND b.user_id = ?
+                WHERE p.deleted_at IS NULL
+                ORDER BY r.start_time DESC LIMIT 10`,
+            [req.user.id]
         );
+        const recentRuns = recentRunsRaw.map(row => ({
+            ...row,
+            bookmarked: row.bookmarked === 1
+        }));
         const pipelineStats = await db.query(
             `SELECT p.id, p.name, p.status, COUNT(r.id) as run_count,
        SUM(r.total_input) as total_input, SUM(r.total_output) as total_output, SUM(r.error_count) as total_errors

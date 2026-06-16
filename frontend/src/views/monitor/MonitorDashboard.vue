@@ -72,11 +72,25 @@
     <div class="table-card fade-in-up">
       <div class="table-header">
         <h4>最近运行记录</h4>
-        <el-select v-model="filterPipeline" placeholder="筛选生产线" clearable size="small" style="width: 200px" @change="loadRuns">
-          <el-option v-for="p in pipelineStats" :key="p.id" :label="p.name" :value="p.id" />
-        </el-select>
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <el-checkbox v-model="showBookmarkColumn" size="small">显示收藏状态</el-checkbox>
+          <el-select v-model="filterPipeline" placeholder="筛选生产线" clearable size="small" style="width: 200px" @change="loadRuns">
+            <el-option v-for="p in pipelineStats" :key="p.id" :label="p.name" :value="p.id" />
+          </el-select>
+        </div>
       </div>
       <el-table :data="recentRuns" stripe v-loading="loading" style="width: 100%">
+        <el-table-column label="收藏" width="70" align="center" v-if="showBookmarkColumn">
+          <template #default="{ row }">
+            <el-icon
+              :class="{ 'bookmarked': row.bookmarked }"
+              class="bookmark-icon"
+              :title="row.bookmarked ? '已收藏' : '未收藏'"
+            >
+              <component :is="row.bookmarked ? 'StarFilled' : 'Star'" />
+            </el-icon>
+          </template>
+        </el-table-column>
         <el-table-column prop="pipeline_name" label="生产线" min-width="160" />
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
@@ -122,6 +136,7 @@ import dayjs from 'dayjs'
 import * as echarts from 'echarts'
 
 const loading = ref(false)
+const showBookmarkColumn = ref(true)
 const overview = ref({ totalPipelines: 0, runningPipelines: 0, totalRuns: 0, failedRuns: 0 })
 const recentRuns = ref([])
 const pipelineStats = ref([])
@@ -213,5 +228,13 @@ onMounted(loadOverview)
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
+}
+.bookmark-icon {
+  color: var(--text-secondary);
+  font-size: 16px;
+  transition: var(--transition);
+}
+.bookmark-icon.bookmarked {
+  color: #e6a23c;
 }
 </style>

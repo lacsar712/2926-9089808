@@ -348,3 +348,18 @@ INSERT INTO `preset` (`name`, `component_type`, `config`, `description`, `tags`,
 ('BERT中文NER', 'ner-model', '{"model":"bert-base-chinese","entityTypes":["PER","ORG","LOC","TIME"],"confidence":0.85}', '基于BERT的中文实体识别', 'ner,bert', 1, 1, '系统管理员', 18),
 ('金融情感分析', 'sentiment-model', '{"model":"finbert-sentiment","labels":["positive","negative","neutral"]}', '金融领域专用情感分析模型', '情感分析,金融', 1, 2, '张三', 9),
 ('Neo4j图谱构建', 'kg-builder', '{"graphDB":"neo4j","host":"10.0.1.200","port":7687}', 'Neo4j图数据库连接配置', 'neo4j,知识图谱', 1, 1, '系统管理员', 11);
+
+-- 运行书签表
+CREATE TABLE IF NOT EXISTS `run_bookmark` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `user_id` INT NOT NULL COMMENT '用户ID',
+  `run_id` INT NOT NULL COMMENT '运行记录ID',
+  `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '收藏时间',
+  UNIQUE KEY `uk_user_run` (`user_id`, `run_id`),
+  FOREIGN KEY (`user_id`) REFERENCES `sys_user`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`run_id`) REFERENCES `pipeline_run`(`id`) ON DELETE CASCADE,
+  INDEX idx_user_id (`user_id`),
+  INDEX idx_run_id (`run_id`),
+  INDEX idx_created_at (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

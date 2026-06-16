@@ -7,8 +7,38 @@
         <span class="status-badge" :class="runDetail?.status">
           <span class="dot"></span>{{ runStatusMap[runDetail?.status] }}
         </span>
+        <el-button
+          size="small"
+          :type="runDetail?.bookmarked ? 'warning' : 'default'"
+          :plain="!runDetail?.bookmarked"
+          @click="handleBookmarkClick"
+          :loading="bookmarkLoading"
+        >
+          <el-icon><component :is="runDetail?.bookmarked ? 'StarFilled' : 'Star'" /></el-icon>
+          {{ runDetail?.bookmarked ? '已收藏' : '收藏' }}
+        </el-button>
       </div>
     </div>
+
+    <!-- 收藏备注弹窗 -->
+    <el-dialog v-model="bookmarkDialogVisible" title="收藏备注" width="420px">
+      <el-form label-position="top">
+        <el-form-item label="备注（可选）">
+          <el-input
+            v-model="bookmarkRemark"
+            type="textarea"
+            :rows="4"
+            placeholder="请输入收藏备注，方便后续查看..."
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="bookmarkDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmBookmark" :loading="bookmarkLoading">确定</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 运行概要 -->
     <el-row :gutter="20" class="fade-in-up" style="margin-bottom: 24px;">
@@ -164,6 +194,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
 import dayjs from 'dayjs'
 
@@ -172,9 +203,53 @@ const runId = route.params.id
 const runDetail = ref(null)
 const nodeDetails = ref([])
 const selectedNodeDetail = ref(null)
+const bookmarkDialogVisible = ref(false)
+const bookmarkRemark = ref('')
+const bookmarkLoading = ref(false)
 
 const runStatusMap = { running: '运行中', completed: '已完成', failed: '失败', cancelled: '已取消' }
 const nodeStatusMap = { pending: '等待中', running: '运行中', completed: '已完成', failed: '失败' }
+
+const handleBookmarkClick = async () => {
+  if (runDetail.value?.bookmarked) {
+    try {
+      await ElMessageBox.confirm('确定要取消收藏此运行记录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+      bookmarkLoading.value = true
+      await api.delete(`/bookmarks/${runId}`)
+      runDetail.value.bookmarked = false
+      runDetail.value.bookmark_remark = null
+      runDetail.value.bookmark_time = null
+      ElMessage.success('已取消收藏')
+    } catch {
+      /* user cancelled */
+    } finally {
+      bookmarkLoading.value = false
+    }
+  } else {
+    bookmarkRemark.value = ''
+    bookmarkDialogVisible.value = true
+  }
+}
+
+const confirmBookmark = async () => {
+  try {
+    bookmarkLoading.value = true
+    await api.post('/bookmarks', {
+      runId: runId,
+      remark: bookmarkRemark.value.trim() || null
+    })
+    runDetail.value.bookmarked = true
+    runDetail.value.bookmark_remark = bookmarkRemark.value.trim() || null
+    ElMessage.success('收藏成功')
+    bookmarkDialogVisible.value = false
+  } finally {
+    bookmarkLoading.value = false
+  }
+}
 
 const calcDuration = (s, e) => {
   if (!s) return '-'
