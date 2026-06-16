@@ -61,6 +61,16 @@
             <template #title>资源配额</template>
           </el-menu-item>
         </el-sub-menu>
+        <el-sub-menu index="/settings">
+          <template #title>
+            <el-icon><Setting /></el-icon>
+            <span>设置</span>
+          </template>
+          <el-menu-item index="/settings/api-keys">
+            <el-icon><Key /></el-icon>
+            <template #title>API 密钥</template>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </aside>
     <div class="main-area">

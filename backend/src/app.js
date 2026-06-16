@@ -13,6 +13,8 @@ const logRoutes = require('./routes/log');
 const quotaRoutes = require('./routes/quota');
 const alertRoutes = require('./routes/alert');
 const lineageRoutes = require('./routes/lineage');
+const apiKeyRoutes = require('./routes/apiKey');
+const openRoutes = require('./routes/open');
 
 const { authMiddleware } = require('./middleware/auth');
 
@@ -30,6 +32,9 @@ app.get('/api/health', (_req, res) => {
 // 公开路由
 app.use('/api/auth', authRoutes);
 
+// API Key 开放路由
+app.use('/api/open', openRoutes);
+
 // 需要认证的路由
 app.use('/api/pipelines', authMiddleware, pipelineRoutes);
 app.use('/api/flows', authMiddleware, flowRoutes);
@@ -40,6 +45,7 @@ app.use('/api/logs', authMiddleware, logRoutes);
 app.use('/api/quota', authMiddleware, quotaRoutes);
 app.use('/api/alert', authMiddleware, alertRoutes.router);
 app.use('/api/lineage', authMiddleware, lineageRoutes);
+app.use('/api/api-keys', authMiddleware, apiKeyRoutes);
 
 // 全局错误处理
 app.use((err, _req, res, _next) => {

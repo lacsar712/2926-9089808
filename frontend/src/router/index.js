@@ -71,6 +71,12 @@ const routes = [
                 name: 'SystemQuota',
                 component: () => import('@/views/system/QuotaManage.vue'),
                 meta: { title: '资源配额', icon: 'Odometer' }
+            },
+            {
+                path: 'settings/api-keys',
+                name: 'SettingsApiKeys',
+                component: () => import('@/views/settings/ApiKeysView.vue'),
+                meta: { title: 'API 密钥', icon: 'Key' }
             }
         ]
     }

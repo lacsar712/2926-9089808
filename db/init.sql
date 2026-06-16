@@ -253,3 +253,21 @@ INSERT INTO `alert_event` (`rule_id`, `rule_name`, `pipeline_id`, `run_id`, `tri
 (1, '运行失败告警', 1, 1, '2024-12-10 10:35:00', 1, 'admin', '2024-12-10 11:00:00'),
 (2, '错误数阈值告警', 1, 1, '2024-12-10 10:36:00', 0, NULL, NULL),
 (1, '运行失败告警', 3, 3, '2024-12-18 06:45:00', 0, NULL, NULL);
+
+-- API密钥表
+CREATE TABLE IF NOT EXISTS `api_key` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL COMMENT '密钥名称',
+  `key_prefix` VARCHAR(16) NOT NULL COMMENT '密钥前缀(前8位)',
+  `key_hash` VARCHAR(255) NOT NULL COMMENT '密钥哈希值',
+  `scope` ENUM('read', 'write') NOT NULL DEFAULT 'read' COMMENT '权限范围: read只读, write读写',
+  `user_id` INT NOT NULL COMMENT '创建用户ID',
+  `status` ENUM('active', 'revoked') NOT NULL DEFAULT 'active' COMMENT '状态: active活跃, revoked已吊销',
+  `expires_at` DATETIME NULL COMMENT '过期时间, NULL表示永不过期',
+  `last_used_at` DATETIME NULL COMMENT '最后使用时间',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `revoked_at` DATETIME NULL COMMENT '吊销时间',
+  INDEX idx_key_hash (`key_hash`),
+  INDEX idx_user_id (`user_id`),
+  INDEX idx_status (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
