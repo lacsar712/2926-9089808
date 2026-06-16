@@ -258,6 +258,29 @@ INSERT INTO `alert_event` (`rule_id`, `rule_name`, `pipeline_id`, `run_id`, `tri
 (2, '错误数阈值告警', 1, 1, '2024-12-10 10:36:00', 0, NULL, NULL),
 (1, '运行失败告警', 3, 3, '2024-12-18 06:45:00', 0, NULL, NULL);
 
+-- 发布审批表
+CREATE TABLE IF NOT EXISTS `publish_request` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `pipeline_id` INT NOT NULL,
+  `applicant_id` INT NOT NULL,
+  `applicant_name` VARCHAR(50) NOT NULL,
+  `target_version` INT NOT NULL,
+  `remark` TEXT,
+  `status` ENUM('pending','approved','rejected') DEFAULT 'pending',
+  `approver_id` INT,
+  `approver_name` VARCHAR(50),
+  `reject_reason` TEXT,
+  `flow_data` JSON COMMENT '申请时的编排数据快照',
+  `submitted_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `approved_at` DATETIME,
+  FOREIGN KEY (`pipeline_id`) REFERENCES `pipeline`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`applicant_id`) REFERENCES `sys_user`(`id`),
+  FOREIGN KEY (`approver_id`) REFERENCES `sys_user`(`id`),
+  INDEX idx_status (`status`),
+  INDEX idx_pipeline_id (`pipeline_id`),
+  INDEX idx_applicant_id (`applicant_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- API密钥表
 CREATE TABLE IF NOT EXISTS `api_key` (
   `id` INT PRIMARY KEY AUTO_INCREMENT,

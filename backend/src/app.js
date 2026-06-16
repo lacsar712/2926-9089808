@@ -15,6 +15,7 @@ const alertRoutes = require('./routes/alert');
 const lineageRoutes = require('./routes/lineage');
 const apiKeyRoutes = require('./routes/apiKey');
 const openRoutes = require('./routes/open');
+const approvalRoutes = require('./routes/approval');
 
 const { authMiddleware } = require('./middleware/auth');
 
@@ -46,6 +47,7 @@ app.use('/api/quota', authMiddleware, quotaRoutes);
 app.use('/api/alert', authMiddleware, alertRoutes.router);
 app.use('/api/lineage', authMiddleware, lineageRoutes);
 app.use('/api/api-keys', authMiddleware, apiKeyRoutes);
+app.use('/api/approval', authMiddleware, approvalRoutes);
 
 // 全局错误处理
 app.use((err, _req, res, _next) => {

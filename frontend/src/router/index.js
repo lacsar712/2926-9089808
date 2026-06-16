@@ -83,6 +83,18 @@ const routes = [
                 name: 'SettingsApiKeys',
                 component: () => import('@/views/settings/ApiKeysView.vue'),
                 meta: { title: 'API 密钥', icon: 'Key' }
+            },
+            {
+                path: 'approval',
+                name: 'Approval',
+                component: () => import('@/views/approval/ApprovalView.vue'),
+                meta: { title: '发布审批', icon: 'Check', roles: ['admin'] }
+            },
+            {
+                path: 'approval/mine',
+                name: 'MyApproval',
+                component: () => import('@/views/approval/MyApproval.vue'),
+                meta: { title: '我的申请', icon: 'Document', roles: ['admin', 'editor'] }
             }
         ]
     }
@@ -97,6 +109,13 @@ router.beforeEach((to, _from, next) => {
     document.title = `${to.meta.title || '数据生产线'} - 数据生产线可视化平台`
     if (to.path !== '/login' && !localStorage.getItem('token')) {
         next('/login')
+    } else if (to.meta.roles) {
+        const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
+        if (!to.meta.roles.includes(userInfo.role)) {
+            next('/')
+        } else {
+            next()
+        }
     } else {
         next()
     }

@@ -49,6 +49,14 @@
           <el-icon><Connection /></el-icon>
           <template #title>数据血缘</template>
         </el-menu-item>
+        <el-menu-item v-if="userRole === 'admin'" index="/approval">
+          <el-icon><Check /></el-icon>
+          <template #title>发布审批</template>
+        </el-menu-item>
+        <el-menu-item v-if="userRole === 'admin' || userRole === 'editor'" index="/approval/mine">
+          <el-icon><Document /></el-icon>
+          <template #title>我的申请</template>
+        </el-menu-item>
         <el-sub-menu index="/system">
           <template #title>
             <el-icon><Setting /></el-icon>
@@ -139,6 +147,7 @@ const userInfo = computed(() => {
 })
 
 const activeMenu = computed(() => route.meta.activeMenu || route.path)
+const userRole = computed(() => userInfo.value?.role || 'viewer')
 const roleLabel = computed(() => {
   const map = { admin: '管理员', editor: '编辑者', viewer: '查看者' }
   return map[userInfo.value?.role] || '用户'

@@ -58,8 +58,8 @@ router.put('/:pipelineId', roleGuard('admin', 'editor'), async (req, res) => {
     }
 });
 
-// 发布生产线
-router.post('/:pipelineId/publish', roleGuard('admin', 'editor'), async (req, res) => {
+// 发布生产线（仅 admin 可直接发布）
+router.post('/:pipelineId/publish', roleGuard('admin'), async (req, res) => {
     try {
         const { remark } = req.body;
 

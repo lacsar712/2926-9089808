@@ -40,7 +40,8 @@
         <div class="toolbar-right">
           <el-button size="small" plain @click="handleCheck"><el-icon><CircleCheck /></el-icon>检查</el-button>
           <el-button size="small" plain @click="handleSave" :loading="saving"><el-icon><FolderOpened /></el-icon>保存</el-button>
-          <el-button size="small" type="primary" @click="handlePublish"><el-icon><Upload /></el-icon>发布</el-button>
+          <el-button v-if="userRole === 'admin'" size="small" type="primary" @click="handlePublish"><el-icon><Upload /></el-icon>发布</el-button>
+          <el-button v-else size="small" type="primary" @click="handleSubmitApproval"><el-icon><Upload /></el-icon>提交审批</el-button>
           <el-button size="small" plain @click="showHistory = true"><el-icon><Clock /></el-icon>历史</el-button>
         </div>
       </div>
@@ -170,6 +171,10 @@ const historyLoading = ref(false)
 const historyList = ref([])
 const searchComp = ref('')
 const vueFlowRef = ref(null)
+const userInfo = computed(() => {
+  try { return JSON.parse(localStorage.getItem('userInfo') || '{}') } catch { return {} }
+})
+const userRole = computed(() => userInfo.value?.role || 'viewer')
 
 let nodeCounter = 100
 
@@ -375,6 +380,17 @@ const handlePublish = async () => {
     })
     await api.post(`/flows/${pipelineId}/publish`, { remark })
     ElMessage.success('发布成功')
+  } catch { /* handled */ }
+}
+
+const handleSubmitApproval = async () => {
+  try {
+    await handleSave()
+    const { value: remark } = await ElMessageBox.prompt('请输入发布备注', '提交审批', {
+      confirmButtonText: '提交', cancelButtonText: '取消', inputPlaceholder: '可选备注信息...'
+    })
+    await api.post(`/approval/${pipelineId}`, { remark })
+    ElMessage.success('已提交审批，请等待管理员审核')
   } catch { /* handled */ }
 }
 
