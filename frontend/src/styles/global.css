@@ -3,12 +3,15 @@
     --primary-light: #818cf8;
     --primary-dark: #4f46e5;
     --bg-dark: #0f172a;
+    --bg-page: #0f172a;
     --bg-card: #1e293b;
     --bg-sidebar: #1a1f36;
     --bg-hover: #334155;
     --text-primary: #f1f5f9;
     --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
     --border-color: #334155;
+    --border-color-light: #1e293b;
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -17,6 +20,7 @@
     --gradient-bg: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
     --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
     --shadow-hover: 0 8px 32px rgba(99, 102, 241, 0.2);
+    --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.4);
     --radius: 12px;
     --radius-sm: 8px;
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

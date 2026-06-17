@@ -113,6 +113,18 @@ const routes = [
                 name: 'MyApproval',
                 component: () => import('@/views/approval/MyApproval.vue'),
                 meta: { title: '我的申请', icon: 'Document', roles: ['admin', 'editor'] }
+            },
+            {
+                path: 'help',
+                name: 'Help',
+                component: () => import('@/views/help/HelpCenter.vue'),
+                meta: { title: '帮助中心', icon: 'QuestionFilled' }
+            },
+            {
+                path: 'system/help',
+                name: 'SystemHelp',
+                component: () => import('@/views/system/HelpManage.vue'),
+                meta: { title: '帮助管理', icon: 'Reading', roles: ['admin'] }
             }
         ]
     }

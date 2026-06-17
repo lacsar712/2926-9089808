@@ -363,3 +363,96 @@ CREATE TABLE IF NOT EXISTS `run_bookmark` (
   INDEX idx_run_id (`run_id`),
   INDEX idx_created_at (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 帮助中心分类表
+CREATE TABLE IF NOT EXISTS `help_category` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL COMMENT '分类名称',
+  `slug` VARCHAR(100) NOT NULL UNIQUE COMMENT '分类标识',
+  `icon` VARCHAR(50) DEFAULT NULL COMMENT '图标',
+  `sort_order` INT DEFAULT 0 COMMENT '排序',
+  `parent_id` INT DEFAULT NULL COMMENT '父分类ID',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`parent_id`) REFERENCES `help_category`(`id`) ON DELETE SET NULL,
+  INDEX idx_slug (`slug`),
+  INDEX idx_parent_id (`parent_id`),
+  INDEX idx_sort_order (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 帮助中心文章表
+CREATE TABLE IF NOT EXISTS `help_article` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `title` VARCHAR(200) NOT NULL COMMENT '文章标题',
+  `slug` VARCHAR(200) NOT NULL COMMENT '文章标识',
+  `content` MEDIUMTEXT COMMENT '文章内容(Markdown)',
+  `category_id` INT NOT NULL COMMENT '分类ID',
+  `sort_order` INT DEFAULT 0 COMMENT '排序',
+  `status` ENUM('draft','published') DEFAULT 'draft' COMMENT '状态: draft草稿, published已发布',
+  `view_count` INT DEFAULT 0 COMMENT '浏览次数',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`category_id`) REFERENCES `help_category`(`id`) ON DELETE CASCADE,
+  UNIQUE KEY `uk_category_slug` (`category_id`, `slug`),
+  INDEX idx_status (`status`),
+  INDEX idx_category_id (`category_id`),
+  INDEX idx_sort_order (`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 帮助中心反馈表
+CREATE TABLE IF NOT EXISTS `help_feedback` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `article_id` INT NOT NULL COMMENT '文章ID',
+  `user_id` INT DEFAULT NULL COMMENT '用户ID(未登录可为空)',
+  `is_helpful` TINYINT NOT NULL COMMENT '1有用 0无用',
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`article_id`) REFERENCES `help_article`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `sys_user`(`id`) ON DELETE SET NULL,
+  INDEX idx_article_id (`article_id`),
+  INDEX idx_user_id (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 帮助中心种子数据
+INSERT INTO `help_category` (`name`, `slug`, `icon`, `sort_order`, `parent_id`) VALUES
+('快速入门', 'quickstart', 'Guide', 1, NULL),
+('生产线管理', 'pipeline', 'Operation', 2, NULL),
+('编排指南', 'flow', 'Share', 3, NULL),
+('监控说明', 'monitor', 'DataLine', 4, NULL),
+('权限与角色', 'permission', 'User', 5, NULL),
+('API 参考', 'api', 'Key', 6, NULL);
+
+INSERT INTO `help_article` (`title`, `slug`, `content`, `category_id`, `sort_order`, `status`, `view_count`) VALUES
+('欢迎使用帮助中心', 'welcome', '# 欢迎使用帮助中心\n\n这是数据生产线可视化平台的帮助中心。\n\n## 功能概览\n\n- **生产线管理**：创建、编辑、发布生产线\n- **编排指南**：使用可视化编辑器编排数据流\n- **监控说明**：实时监控生产线运行状态\n\n## 快速开始\n\n1. 登录系统\n2. 创建第一条生产线\n3. 使用编排器设计流程\n4. 发布并运行\n\n> 提示：点击左侧分类可以浏览更多文档', 1, 1, 'published', 0),
+('账号注册与登录', 'login', '# 账号注册与登录\n\n## 注册账号\n\n目前系统支持管理员创建账号，请联系系统管理员为您开通账号。\n\n## 登录系统\n\n1. 打开登录页面\n2. 输入用户名和密码\n3. 点击登录按钮\n\n## 密码重置\n\n如需重置密码，请联系系统管理员。', 1, 2, 'published', 0),
+('界面介绍', 'interface', '# 界面介绍\n\n## 左侧导航栏\n\n左侧导航栏包含所有功能模块的入口，包括：\n\n- 生产线管理\n- 生产线监控\n- 告警规则\n- 数据血缘\n- 系统管理（管理员可见）\n\n## 顶部工具栏\n\n顶部工具栏包含：\n\n- 面包屑导航\n- 环境切换器\n- 用户信息菜单\n\n## 主内容区\n\n主内容区展示当前页面的主要内容。', 1, 3, 'published', 0),
+('创建生产线', 'create-pipeline', '# 创建生产线\n\n## 操作步骤\n\n1. 进入「生产线管理」页面\n2. 点击「新建生产线」按钮\n3. 填写生产线名称和描述\n4. 选择标签（可选）\n5. 点击「确定」创建\n\n## 注意事项\n\n- 生产线名称不能为空\n- 生产线名称在同一环境下应唯一\n- 创建后可以随时编辑基本信息', 2, 1, 'published', 0),
+('生产线状态说明', 'pipeline-status', '# 生产线状态说明\n\n生产线有以下几种状态：\n\n| 状态 | 说明 |\n|------|------|\n| 草稿 | 尚未发布的生产线 |\n| 已发布 | 已发布的生产线 |\n| 运行中 | 正在运行的生产线 |\n| 已停止 | 已停止运行的生产线 |\n| 错误 | 运行出错的生产线 |', 2, 2, 'published', 0),
+('发布与版本管理', 'publish-version', '# 发布与版本管理\n\n## 发布生产线\n\n编辑完成后，点击「发布」按钮即可发布当前版本。\n\n## 版本管理\n\n每次发布都会生成一个新版本，您可以：\n\n- 查看历史版本\n- 回滚到指定版本\n- 比较版本差异\n\n> 注意：发布前请确保生产线编排正确无误。', 2, 3, 'published', 0),
+('编排器概览', 'flow-overview', '# 编排器概览\n\n## 什么是编排器\n\n编排器是一个可视化的流程设计工具，您可以通过拖拽节点的方式设计数据处理流程。\n\n## 主要功能\n\n- 节点拖拽与连接\n- 节点配置编辑\n- 流程验证\n- 保存与加载', 3, 1, 'published', 0),
+('节点类型介绍', 'node-types', '# 节点类型介绍\n\n## 数据接入类\n\n- 数据库读取\n- 文件读取\n- API 连接器\n\n## 数据处理类\n\n- 数据清洗\n- 文本归一化\n- 数据转换\n\n## 模型标注类\n\n- NER 实体识别\n- 情感分析\n- 关系抽取\n\n## 知识生产类\n\n- 知识图谱构建\n- 知识库写入', 3, 2, 'published', 0),
+('连线与数据流', 'connections', '# 连线与数据流\n\n## 创建连线\n\n从节点的输出端口拖拽到另一个节点的输入端口即可创建连线。\n\n## 数据流方向\n\n数据从左向右流动，即从上游节点流向下游节点。\n\n## 注意事项\n\n- 一个节点可以有多个输入和输出\n- 不允许创建循环连接', 3, 3, 'published', 0),
+('监控看板介绍', 'monitor-dashboard', '# 监控看板介绍\n\n## 功能概述\n\n监控看板提供生产线运行状态的实时展示。\n\n## 主要指标\n\n- 运行中生产线数量\n- 今日运行次数\n- 成功率\n- 平均运行时长\n\n## 操作说明\n\n点击生产线卡片可以查看详细的运行监控数据。', 4, 1, 'published', 0),
+('运行记录查看', 'run-records', '# 运行记录查看\n\n## 查看运行记录\n\n在监控详情页面，您可以查看：\n\n- 运行状态\n- 开始/结束时间\n- 输入输出数量\n- 错误计数\n\n## 节点运行详情\n\n点击某个节点可以查看该节点的详细运行数据，包括：\n\n- 节点状态\n- 输入输出数据样例\n- 错误信息', 4, 2, 'published', 0),
+('告警规则配置', 'alert-rules', '# 告警规则配置\n\n## 告警类型\n\n- 运行失败告警\n- 运行超时告警\n- 错误数阈值告警\n- 连续失败告警\n\n## 配置步骤\n\n1. 进入告警规则页面\n2. 点击「新建规则」\n3. 选择告警类型\n4. 设置阈值参数\n5. 配置通知方式\n6. 保存规则', 4, 3, 'published', 0),
+('角色与权限说明', 'roles', '# 角色与权限说明\n\n## 系统角色\n\n系统提供三种角色：\n\n| 角色 | 权限 |\n|------|------|\n| 管理员(admin) | 全部权限 |\n| 编辑者(editor) | 生产线编辑、运行等 |\n| 查看者(viewer) | 只读权限 |\n\n## 权限矩阵\n\n### 生产线管理\n\n- 管理员：增删改查\n- 编辑者：增删改查（自己创建的）\n- 查看者：查看', 5, 1, 'published', 0),
+('用户管理', 'user-management', '# 用户管理\n\n> 此功能仅管理员可用\n\n## 创建用户\n\n1. 进入「系统管理」-「用户管理」\n2. 点击「新建用户」\n3. 填写用户信息\n4. 分配角色\n5. 保存\n\n## 禁用/启用用户\n\n在用户列表中，可以启用或禁用用户账号。', 5, 2, 'published', 0),
+('API 概述', 'api-overview', '# API 概述\n\n## 接口说明\n\n本系统提供 RESTful API 接口，支持通过 API Key 进行身份认证。\n\n## 基础路径\n\n所有 API 接口的基础路径为：\n\n```\n/api\n```\n\n## 响应格式\n\n所有接口返回 JSON 格式数据：\n\n```json\n{\n  \"success\": true,\n  \"data\": {},\n  \"message\": \"操作成功\"\n}\n```', 6, 1, 'published', 0),
+('API Key 管理', 'api-key-management', '# API Key 管理\n\n## 创建 API Key\n\n1. 进入「设置」-「API 密钥」\n2. 点击「创建密钥」\n3. 填写密钥名称\n4. 选择权限范围\n5. 点击创建\n\n## 权限范围\n\n- 只读(read)：仅可查询数据\n- 读写(write)：可查询和修改数据\n\n> 注意：API Key 仅在创建时显示完整值，请妥善保存。', 6, 2, 'published', 0);
+
+INSERT INTO `help_feedback` (`article_id`, `user_id`, `is_helpful`) VALUES
+(1, 1, 1), (1, 2, 1), (1, 3, 0),
+(2, 1, 1), (2, 2, 1),
+(3, 2, 1), (3, 3, 1),
+(4, 1, 1), (4, 3, 0),
+(5, 2, 1),
+(6, 1, 1), (6, 2, 1), (6, 3, 1),
+(7, 2, 0),
+(8, 1, 1), (8, 3, 1),
+(9, 2, 1),
+(10, 1, 1),
+(11, 2, 1), (11, 3, 0),
+(12, 1, 1),
+(13, 1, 1), (13, 2, 1),
+(14, 1, 1),
+(15, 2, 1), (15, 3, 1),
+(16, 1, 1), (16, 2, 0);

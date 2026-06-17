@@ -96,6 +96,10 @@
             <el-icon><Odometer /></el-icon>
             <template #title>资源配额</template>
           </el-menu-item>
+          <el-menu-item v-if="userRole === 'admin'" index="/system/help">
+            <el-icon><Reading /></el-icon>
+            <template #title>帮助管理</template>
+          </el-menu-item>
         </el-sub-menu>
         <el-sub-menu index="/settings">
           <template #title>
@@ -107,6 +111,10 @@
             <template #title>API 密钥</template>
           </el-menu-item>
         </el-sub-menu>
+        <el-menu-item index="/help">
+          <el-icon><QuestionFilled /></el-icon>
+          <template #title>帮助中心</template>
+        </el-menu-item>
       </el-menu>
     </aside>
     <div class="main-area">

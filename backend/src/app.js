@@ -19,6 +19,7 @@ const approvalRoutes = require('./routes/approval');
 const environmentRoutes = require('./routes/environment');
 const presetRoutes = require('./routes/preset');
 const bookmarkRoutes = require('./routes/bookmark');
+const helpRoutes = require('./routes/help');
 
 const { authMiddleware } = require('./middleware/auth');
 const { environmentMiddleware } = require('./middleware/environment');
@@ -43,6 +44,9 @@ app.use('/api/auth', authRoutes);
 
 // API Key 开放路由
 app.use('/api/open', openRoutes);
+
+// 帮助中心公开路由
+app.use('/api/help', helpRoutes);
 
 // 需要认证的路由
 app.use('/api/pipelines', authMiddleware, pipelineRoutes);
