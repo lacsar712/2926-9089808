@@ -302,13 +302,14 @@ import '@vue-flow/minimap/dist/style.css'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
 import dayjs from 'dayjs'
-import {
+import shared from '@shared'
+const {
   buildCategories,
   getCategoryMeta,
   getConfigLabel,
   getComponentSchema,
   validateFlow
-} from '@shared/index.js'
+} = shared
 
 const route = useRoute()
 const router = useRouter()

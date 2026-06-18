@@ -6,10 +6,15 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 export default defineConfig({
     plugins: [vue()],
+    build: {
+        commonjsOptions: {
+            include: [/shared/, /node_modules/]
+        }
+    },
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url)),
-            '@shared': fileURLToPath(new URL('../shared', import.meta.url))
+            '@shared': fileURLToPath(new URL('../shared/index.js', import.meta.url))
         }
     },
     server: {

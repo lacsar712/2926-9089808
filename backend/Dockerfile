@@ -2,10 +2,11 @@ FROM node:20-slim
 
 WORKDIR /app
 
-COPY package*.json ./
+COPY backend/package*.json ./
 RUN npm config set registry https://registry.npmmirror.com && npm install --production
 
-COPY . .
+COPY backend/ ./
+COPY shared/ /shared/
 
 EXPOSE 3001
 
