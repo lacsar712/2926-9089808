@@ -90,7 +90,8 @@ router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
         const { keyword, page = 1, pageSize = 10 } = req.query;
-        const offset = (page - 1) * pageSize;
+        const limit = Math.max(1, parseInt(pageSize, 10) || 10);
+        const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
 
         let countSql = `
             SELECT COUNT(*) as total
@@ -128,11 +129,10 @@ router.get('/', async (req, res) => {
             params.push(keywordParam, keywordParam);
         }
 
-        listSql += ' ORDER BY b.created_at DESC LIMIT ? OFFSET ?';
-        const listParams = [...params, parseInt(pageSize), parseInt(offset)];
+        listSql += ` ORDER BY b.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const [countResult] = await db.query(countSql, params);
-        const list = await db.query(listSql, listParams);
+        const list = await db.query(listSql, params);
 
         res.json({
             success: true,

@@ -97,10 +97,9 @@ router.get('/', async (req, res) => {
         const [countResult] = await db.query(countSql, params);
         const total = countResult.total;
 
-        const limit = parseInt(pageSize);
-        const offset = (parseInt(page) - 1) * limit;
-        sql += ' ORDER BY pr.submitted_at DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        const limit = Math.max(1, parseInt(pageSize, 10) || 10);
+        const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
+        sql += ` ORDER BY pr.submitted_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const rows = await db.query(sql, params);
         const parsed = rows.map(row => ({
@@ -110,7 +109,7 @@ router.get('/', async (req, res) => {
 
         res.json({
             success: true,
-            data: { list: parsed, total, page: parseInt(page), pageSize: parseInt(pageSize) }
+            data: { list: parsed, total, page: parseInt(page, 10) || 1, pageSize: limit }
         });
     } catch (error) {
         logger.error('Get approval list error:', { message: error.message });
@@ -304,10 +303,9 @@ router.get('/mine/list', roleGuard('admin', 'editor'), async (req, res) => {
         const [countResult] = await db.query(countSql, params);
         const total = countResult.total;
 
-        const limit = parseInt(pageSize);
-        const offset = (parseInt(page) - 1) * limit;
-        sql += ' ORDER BY pr.submitted_at DESC LIMIT ? OFFSET ?';
-        params.push(limit, offset);
+        const limit = Math.max(1, parseInt(pageSize, 10) || 10);
+        const offset = Math.max(0, ((parseInt(page, 10) || 1) - 1) * limit);
+        sql += ` ORDER BY pr.submitted_at DESC LIMIT ${limit} OFFSET ${offset}`;
 
         const rows = await db.query(sql, params);
         const parsed = rows.map(row => ({
@@ -317,7 +315,7 @@ router.get('/mine/list', roleGuard('admin', 'editor'), async (req, res) => {
 
         res.json({
             success: true,
-            data: { list: parsed, total, page: parseInt(page), pageSize: parseInt(pageSize) }
+            data: { list: parsed, total, page: parseInt(page, 10) || 1, pageSize: limit }
         });
     } catch (error) {
         logger.error('Get my approval list error:', { message: error.message });

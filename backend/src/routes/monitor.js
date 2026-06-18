@@ -66,7 +66,7 @@ router.get('/runs/:runId', async (req, res) => {
 });
 
 // 获取生产线监控概览
-router.get('/overview', async (_req, res) => {
+router.get('/overview', async (req, res) => {
     try {
         const [totalPipelines] = await db.query('SELECT COUNT(*) as count FROM pipeline WHERE deleted_at IS NULL');
         const [runningPipelines] = await db.query("SELECT COUNT(*) as count FROM pipeline WHERE status = 'running' AND deleted_at IS NULL");

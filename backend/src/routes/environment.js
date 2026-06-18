@@ -8,6 +8,12 @@ const router = express.Router();
 
 const ENV_LABELS = { development: '开发环境', test: '测试环境', production: '生产环境' };
 
+const parseJsonArray = (value) => {
+    if (value == null) return [];
+    if (typeof value === 'string') return JSON.parse(value);
+    return value;
+};
+
 router.get('/list', async (req, res) => {
     try {
         const configs = await db.query('SELECT * FROM environment_config ORDER BY FIELD(environment, "development", "test", "production")');
@@ -27,7 +33,7 @@ router.get('/list', async (req, res) => {
                 label: cfg?.label || ENV_LABELS[envName] || envName,
                 pipeline_count: pipelineCount.count,
                 run_count: runCount.count,
-                default_tag_ids: cfg?.default_tag_ids ? JSON.parse(cfg.default_tag_ids) : [],
+                default_tag_ids: parseJsonArray(cfg?.default_tag_ids),
                 quota_multiplier: cfg?.quota_multiplier ? parseFloat(cfg.quota_multiplier) : 1.0
             });
         }
@@ -61,7 +67,7 @@ router.get('/stats', roleGuard('admin'), async (req, res) => {
                 pipeline_count: pipelineCount.count,
                 run_count: runCount.count,
                 status_breakdown: statusBreakdown,
-                default_tag_ids: cfg.length > 0 && cfg[0].default_tag_ids ? JSON.parse(cfg[0].default_tag_ids) : [],
+                default_tag_ids: cfg.length > 0 ? parseJsonArray(cfg[0].default_tag_ids) : [],
                 quota_multiplier: cfg.length > 0 ? parseFloat(cfg[0].quota_multiplier) : 1.0
             });
         }
