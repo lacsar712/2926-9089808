@@ -16,6 +16,10 @@ docker compose up -d --build
 ```
 3. 等待所有容器启动完成（约1-2分钟）
 
+## 🐢 慢请求日志
+
+开发环境下接口耗时超过 500ms 会自动在终端打印路由名、耗时及关键查询参数摘要；设置环境变量 `NODE_ENV=production` 即可关闭，非生产环境默认开启。
+
 ## 🔗 服务地址 (Services)
 
 - Frontend: http://localhost:3000

@@ -23,6 +23,7 @@ const helpRoutes = require('./routes/help');
 
 const { authMiddleware } = require('./middleware/auth');
 const { environmentMiddleware } = require('./middleware/environment');
+const { slowRequestLogger } = require('./middleware/slowRequestLogger');
 
 const app = express();
 const PORT = 3001;
@@ -33,6 +34,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(environmentMiddleware);
+app.use(slowRequestLogger);
 
 // 健康检查
 app.get('/api/health', (_req, res) => {
