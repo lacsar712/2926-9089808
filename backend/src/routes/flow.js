@@ -3,6 +3,8 @@ const db = require('../utils/db');
 const logger = require('../utils/logger');
 const { roleGuard } = require('../middleware/auth');
 const quotaUtil = require('../utils/quota');
+const path = require('path');
+const { validateFlow, COMPONENT_KEYS, CATEGORY_KEYS, getComponentSchema } = require(path.join(__dirname, '../../../shared/index.js'));
 
 const router = express.Router();
 
@@ -107,18 +109,8 @@ router.post('/:pipelineId/check', async (req, res) => {
         const flowRows = await db.query('SELECT flow_data FROM pipeline_flow WHERE pipeline_id = ?', [req.params.pipelineId]);
         if (flowRows.length === 0) return res.json({ success: true, data: { valid: false, errors: ['编排数据为空'] } });
         const flowData = typeof flowRows[0].flow_data === 'string' ? JSON.parse(flowRows[0].flow_data) : flowRows[0].flow_data;
-        const errors = [];
-        if (!flowData.nodes || flowData.nodes.length === 0) errors.push('画布中没有任何组件');
-        if (!flowData.edges || flowData.edges.length === 0) errors.push('组件之间没有连线');
-        // 检查孤立节点
-        if (flowData.nodes && flowData.edges) {
-            const connectedNodes = new Set();
-            flowData.edges.forEach(e => { connectedNodes.add(e.source); connectedNodes.add(e.target); });
-            flowData.nodes.forEach(n => {
-                if (!connectedNodes.has(n.id)) errors.push(`组件"${n.data?.label || n.id}"未连接`);
-            });
-        }
-        res.json({ success: true, data: { valid: errors.length === 0, errors } });
+        const result = validateFlow(flowData);
+        res.json({ success: true, data: result });
     } catch (error) {
         logger.error('Check flow error:', { message: error.message });
         res.status(500).json({ success: false, message: '检查失败' });

@@ -302,6 +302,13 @@ import '@vue-flow/minimap/dist/style.css'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import api from '@/utils/request'
 import dayjs from 'dayjs'
+import {
+  buildCategories,
+  getCategoryMeta,
+  getConfigLabel,
+  getComponentSchema,
+  validateFlow
+} from '@shared/index.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -345,98 +352,11 @@ const savePresetRules = {
 
 let nodeCounter = 100
 
-const categories = reactive([
-  {
-    key: 'data-access', label: '数据接入', icon: 'Download', color: '#3b82f6', expanded: true,
-    components: [
-      { key: 'database-reader', label: 'MySQL数据读取', config: { host: '10.0.1.100', port: 3306, database: 'data_source', table: 'raw_data' } },
-      { key: 'api-connector', label: 'API数据采集', config: { url: 'https://api.example.com/data', method: 'GET', interval: '5m', format: 'json' } },
-      { key: 'file-reader', label: '文件数据读取', config: { path: '/data/input', format: 'csv', encoding: 'utf-8', batchSize: 1000 } },
-      { key: 'kafka-consumer', label: 'Kafka消费者', config: { brokers: 'kafka:9092', topic: 'data-input', groupId: 'pipeline-group' } },
-      { key: 'ftp-loader', label: 'FTP文件加载', config: { host: 'ftp.example.com', port: 21, username: 'reader', remotePath: '/data' } }
-    ]
-  },
-  {
-    key: 'data-preprocess', label: '数据预处理', icon: 'MagicStick', color: '#10b981', expanded: false,
-    components: [
-      { key: 'data-cleaner', label: '数据清洗', config: { removeNull: true, removeDuplicate: true, trimWhitespace: true } },
-      { key: 'text-normalizer', label: '文本归一化', config: { lowercase: false, removeSpecialChars: true, encoding: 'utf-8' } },
-      { key: 'data-filter', label: '数据过滤', config: { conditions: ['field != null'], mode: 'AND' } },
-      { key: 'text-splitter', label: '文本分段', config: { method: 'paragraph', maxLength: 512, overlap: 50 } },
-      { key: 'format-converter', label: '格式转换', config: { inputFormat: 'json', outputFormat: 'csv', dateFormat: 'YYYY-MM-DD' } }
-    ]
-  },
-  {
-    key: 'model-labeling', label: '模型打标', icon: 'Stamp', color: '#f59e0b', expanded: false,
-    components: [
-      { key: 'ner-model', label: 'NER实体识别', config: { model: 'bert-base-chinese', entityTypes: ['PER', 'ORG', 'LOC', 'TIME'], confidence: 0.85 } },
-      { key: 'sentiment-model', label: '情感分析', config: { model: 'sentiment-bert', labels: ['positive', 'negative', 'neutral'] } },
-      { key: 'classify-model', label: '文本分类', config: { model: 'text-classifier', categories: ['科技', '财经', '体育', '娱乐'], threshold: 0.7 } },
-      { key: 'custom-model', label: '自定义模型', config: { modelPath: '/models/custom', inputField: 'text', outputField: 'label' } }
-    ]
-  },
-  {
-    key: 'entity-extract', label: '实体抽取', icon: 'Promotion', color: '#ef4444', expanded: false,
-    components: [
-      { key: 'rule-extractor', label: '规则抽取', config: { rules: ['正则表达式'], fieldName: 'entity', caseSensitive: false } },
-      { key: 'medical-ner', label: '医学实体识别', config: { model: 'biobert-ner', entityTypes: ['疾病', '药物', '症状', '治疗方案'], confidence: 0.9 } },
-      { key: 'finance-ner', label: '金融实体识别', config: { entityTypes: ['公司', '股票', '行业', '人物'] } },
-      { key: 'address-parser', label: '地址解析', config: { level: 'district', includeCoords: true } }
-    ]
-  },
-  {
-    key: 'relation-build', label: '关系构建', icon: 'Connection', color: '#8b5cf6', expanded: false,
-    components: [
-      { key: 'relation-extractor', label: '关系抽取', config: { model: 're-bert-chinese', relationTypes: ['任职', '投资', '合作', '收购'], threshold: 0.8 } },
-      { key: 'co-occurrence', label: '共现分析', config: { windowSize: 5, minFrequency: 3, method: 'PMI' } },
-      { key: 'causal-analysis', label: '因果关系分析', config: { model: 'causal-bert', confidence: 0.75 } },
-      { key: 'event-extractor', label: '事件抽取', config: { eventTypes: ['并购', '融资', '合作', '发布'], extractArgs: true } }
-    ]
-  },
-  {
-    key: 'knowledge-production', label: '知识数据生产', icon: 'Cpu', color: '#06b6d4', expanded: false,
-    components: [
-      { key: 'kg-builder', label: '知识图谱构建', config: { graphDB: 'neo4j', host: '10.0.1.200', port: 7687 } },
-      { key: 'kg-writer', label: '知识库写入', config: { target: 'elasticsearch', index: 'knowledge_base' } },
-      { key: 'data-fusion', label: '数据融合', config: { strategy: 'voting', sources: 3, conflictResolution: 'latest' } },
-      { key: 'quality-check', label: '质量校验', config: { rules: ['完整性', '一致性', '准确性'], strictMode: false } }
-    ]
-  },
-  {
-    key: 'data-browse', label: '数据浏览', icon: 'Monitor', color: '#ec4899', expanded: false,
-    components: [
-      { key: 'graph-viewer', label: '图谱浏览器', config: { maxNodes: 500, layout: 'force' } },
-      { key: 'data-dashboard', label: '数据看板', config: { refreshInterval: 30, chartTypes: ['line', 'bar', 'pie'] } },
-      { key: 'data-export', label: '数据导出', config: { format: 'csv', encoding: 'utf-8', maxRows: 100000 } },
-      { key: 'report-generator', label: '报告生成', config: { template: 'default', format: 'pdf', includeCharts: true } }
-    ]
-  }
-])
+const categories = reactive(buildCategories())
 
-const configLabels = {
-  host: '服务器地址', port: '端口', database: '数据库名', table: '表名',
-  url: 'API地址', method: '请求方法', interval: '采集间隔', format: '数据格式',
-  path: '文件路径', encoding: '编码', batchSize: '批次大小',
-  brokers: 'Broker地址', topic: '主题', groupId: '消费组',
-  username: '用户名', remotePath: '远程路径',
-  removeNull: '移除空值', removeDuplicate: '去重', trimWhitespace: '去除空白',
-  lowercase: '转小写', removeSpecialChars: '去特殊字符',
-  conditions: '过滤条件', mode: '过滤模式',
-  maxLength: '最大长度', overlap: '重叠长度',
-  inputFormat: '输入格式', outputFormat: '输出格式', dateFormat: '日期格式',
-  model: '模型名称', modelPath: '模型路径', entityTypes: '实体类型',
-  confidence: '置信度阈值', labels: '标签列表', categories: '分类列表',
-  threshold: '阈值', rules: '规则列表', fieldName: '字段名',
-  caseSensitive: '区分大小写', level: '解析级别', includeCoords: '包含坐标',
-  relationTypes: '关系类型', windowSize: '窗口大小', minFrequency: '最小频率',
-  eventTypes: '事件类型', extractArgs: '提取参数',
-  graphDB: '图数据库', target: '目标存储', index: '索引名',
-  strategy: '融合策略', sources: '数据源数', conflictResolution: '冲突处理',
-  strictMode: '严格模式', maxNodes: '最大节点数', layout: '布局方式',
-  refreshInterval: '刷新间隔(秒)', chartTypes: '图表类型',
-  maxRows: '最大行数', template: '模板', includeCharts: '包含图表',
-  inputField: '输入字段', outputField: '输出字段'
-}
+const configLabels = new Proxy({}, {
+  get: (_, key) => getConfigLabel(key)
+})
 
 const filteredCategories = computed(() => {
   if (!searchComp.value) return categories
@@ -448,8 +368,8 @@ const filteredCategories = computed(() => {
   })).filter(cat => cat.components.length > 0)
 })
 
-const getCatColor = (key) => categories.find(c => c.key === key)?.color || '#94a3b8'
-const getCatLabel = (key) => categories.find(c => c.key === key)?.label || key
+const getCatColor = (key) => getCategoryMeta(key)?.color || '#94a3b8'
+const getCatLabel = (key) => getCategoryMeta(key)?.label || key
 const formatDate = (d) => d ? dayjs(d).format('YYYY-MM-DD HH:mm:ss') : '-'
 const miniMapNodeColor = (node) => getCatColor(node.data?.category)
 

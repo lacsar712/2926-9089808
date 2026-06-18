@@ -1,8 +1,10 @@
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 const app = require('../src/app');
 const db = require('../src/utils/db');
 const { JWT_SECRET } = require('../src/middleware/auth');
+const { COMPONENT_KEYS, getComponentSchema } = require(path.join(__dirname, '../../shared/index.js'));
 
 const ADMIN_USER = { id: 1, username: 'admin', role: 'admin', nickname: '系统管理员' };
 const EDITOR_USER = { id: 2, username: 'zhangsan', role: 'editor', nickname: '张三' };
@@ -14,6 +16,16 @@ const generateToken = (user) => {
 const adminToken = generateToken(ADMIN_USER);
 const editorToken = generateToken(EDITOR_USER);
 
+const buildNodeData = (compKey, label) => {
+    const schema = getComponentSchema(compKey);
+    return {
+        label,
+        component: compKey,
+        category: schema.category,
+        config: JSON.parse(JSON.stringify(schema.defaults))
+    };
+};
+
 describe('Flow Routes Integration Tests', () => {
     let testPipelineId;
     let testPipelineIdEmptyFlow;
@@ -24,16 +36,16 @@ describe('Flow Routes Integration Tests', () => {
     const EMPTY_FLOW_DATA = { nodes: [], edges: [] };
     const ISOLATED_NODES_FLOW_DATA = {
         nodes: [
-            { id: 'node-1', type: 'custom', position: { x: 80, y: 200 }, data: { label: '数据读取', component: 'database-reader' } },
-            { id: 'node-2', type: 'custom', position: { x: 350, y: 200 }, data: { label: '数据清洗', component: 'data-cleaner' } }
+            { id: 'node-1', type: 'custom', position: { x: 80, y: 200 }, data: buildNodeData(COMPONENT_KEYS.DATABASE_READER, '数据读取') },
+            { id: 'node-2', type: 'custom', position: { x: 350, y: 200 }, data: buildNodeData(COMPONENT_KEYS.DATA_CLEANER, '数据清洗') }
         ],
         edges: []
     };
     const VALID_FLOW_DATA = {
         nodes: [
-            { id: 'node-1', type: 'custom', position: { x: 80, y: 200 }, data: { label: '数据读取', component: 'database-reader' } },
-            { id: 'node-2', type: 'custom', position: { x: 350, y: 200 }, data: { label: '数据清洗', component: 'data-cleaner' } },
-            { id: 'node-3', type: 'custom', position: { x: 620, y: 200 }, data: { label: '数据输出', component: 'data-writer' } }
+            { id: 'node-1', type: 'custom', position: { x: 80, y: 200 }, data: buildNodeData(COMPONENT_KEYS.DATABASE_READER, '数据读取') },
+            { id: 'node-2', type: 'custom', position: { x: 350, y: 200 }, data: buildNodeData(COMPONENT_KEYS.DATA_CLEANER, '数据清洗') },
+            { id: 'node-3', type: 'custom', position: { x: 620, y: 200 }, data: buildNodeData(COMPONENT_KEYS.DATA_WRITER, '数据输出') }
         ],
         edges: [
             { id: 'e1-2', source: 'node-1', target: 'node-2', animated: true },
